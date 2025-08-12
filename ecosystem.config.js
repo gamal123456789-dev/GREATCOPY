@@ -6,12 +6,12 @@ module.exports = {
     {
       name: 'gear-score',
       script: 'server.js',
-      cwd: '/var/www/gear-score', // Update this path to your actual project path
+      cwd: '/root/MainWebsite', // Updated to correct project path
       
       // Environment
       env: {
         NODE_ENV: 'production',
-        PORT: 3000
+        PORT: 5200
       },
       
       // Process management
@@ -47,7 +47,7 @@ module.exports = {
       // Environment variables (production)
       env_production: {
         NODE_ENV: 'production',
-        PORT: 3000,
+        PORT: 5200,
         // Add other production-specific env vars here
       }
     }

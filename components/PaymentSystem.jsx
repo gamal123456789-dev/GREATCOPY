@@ -176,69 +176,23 @@ const PaymentSystem = ({
 
       // For successful payments without redirect
       if (paymentResult.success) {
-        // Enhanced session validation with detailed logging
+        // Basic session validation - let the server handle detailed authentication
         console.log('🔐 Session validation before order creation:', {
           hasSession: !!session,
           hasUser: !!session?.user,
           hasUserId: !!session?.user?.id,
-          userEmail: session?.user?.email,
-          userName: session?.user?.name,
-          userUsername: session?.user?.username,
           sessionStatus: status
         });
 
-        // Verify session is still valid before creating order
+        // Only check for basic session existence - server will handle authentication
         if (!session || !session.user || !session.user.id) {
-          console.error('❌ Session invalid during order creation - redirecting to auth');
+          console.error('❌ No session found - redirecting to auth');
           alert(getText('payment', 'sessionExpiredDuringOrder') || 'جلسة المستخدم انتهت أثناء إنشاء الطلب. يرجى تسجيل الدخول مرة أخرى.');
           router.push('/auth');
           return;
         }
 
-        // Double-check session via API call and attempt refresh if needed
-        try {
-          const sessionCheck = await fetch('/api/auth/session');
-          const currentSession = await sessionCheck.json();
-          
-          console.log('🔍 API session check result:', {
-            status: sessionCheck.status,
-            hasUser: !!currentSession.user,
-            userId: currentSession.user?.id
-          });
-          
-          if (!sessionCheck.ok || !currentSession.user?.id) {
-            console.log('🔄 Attempting session refresh...');
-            
-            // Try to refresh the session
-            try {
-              const refreshResponse = await fetch('/api/refresh-session', {
-                method: 'POST',
-                credentials: 'same-origin'
-              });
-              
-              if (refreshResponse.ok) {
-                console.log('✅ Session refreshed successfully');
-                // Force re-render to get updated session
-                window.location.reload();
-                return;
-              } else {
-                console.error('❌ Session refresh failed');
-              }
-            } catch (refreshError) {
-              console.error('❌ Error during session refresh:', refreshError);
-            }
-            
-            console.error('❌ API session check failed - session expired');
-            alert(getTextSafe('payment', 'sessionExpiredDuringOrder') || 'User session expired during order creation. Please log in again.');
-            router.push('/auth');
-            return;
-          }
-        } catch (sessionError) {
-          console.error('❌ Error checking session:', sessionError);
-          alert(getTextSafe('payment', 'sessionCheckError') || 'Error checking user session. Please try again.');
-          router.push('/auth');
-          return;
-        }
+        // Continue with order creation - let server handle session validation
 
         const order = {
           id: paymentResult.charge_id || paymentResult.transactionId || uuidv4(),

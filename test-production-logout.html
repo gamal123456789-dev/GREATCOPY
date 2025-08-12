@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اختبار تسجيل الخروج - gear-score.com</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #4a5568;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        .problem-description {
+            background: #fed7d7;
+            border: 2px solid #fc8181;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .problem-description h2 {
+            color: #c53030;
+            margin-top: 0;
+        }
+        .test-section {
+            background: #f7fafc;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 5px solid #4299e1;
+        }
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: transform 0.2s;
+        }
+        .button:hover {
+            transform: translateY(-2px);
+        }
+        .button.danger {
+            background: linear-gradient(135deg, #fc8181 0%, #e53e3e 100%);
+        }
+        .button.success {
+            background: linear-gradient(135deg, #68d391 0%, #38a169 100%);
+        }
+        .log {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+            white-space: pre-wrap;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+        .status.error {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #fc8181;
+        }
+        .status.warning {
+            background: #fefcbf;
+            color: #744210;
+            border: 1px solid #f6e05e;
+        }
+        .emergency-section {
+            background: #fed7d7;
+            border: 2px solid #e53e3e;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        .emergency-section h3 {
+            color: #c53030;
+            margin-top: 0;
+        }
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚪 اختبار تسجيل الخروج</h1>
+        
+        <div class="problem-description">
+            <h2>🎯 المشكلة المبلغ عنها:</h2>
+            <p><strong>"لما بعمل logout بيشيل اليوزر فوق علي اليمين بس برجع اعمل login تاني مش عارف بيوديني ليه https://gear-score.com/api/auth/error"</strong></p>
+            <p>هذه الصفحة تساعد في تشخيص وحل مشكلة تسجيل الخروج على الدومين الحقيقي.</p>
+        </div>
+
+        <div class="test-section">
+            <h3>🔍 اختبارات التشخيص</h3>
+            <button class="button" onclick="checkCurrentSession()">فحص الجلسة الحالية</button>
+            <button class="button" onclick="testLogoutEndpoints()">اختبار نقاط تسجيل الخروج</button>
+            <button class="button" onclick="checkCookies()">فحص الكوكيز</button>
+            <button class="button" onclick="testAuthFlow()">اختبار تدفق المصادقة</button>
+        </div>
+
+        <div class="test-section">
+            <h3>🛠️ حلول تسجيل الخروج</h3>
+            <button class="button success" onclick="performEnhancedLogout()">تسجيل خروج محسن</button>
+            <button class="button" onclick="performStandardLogout()">تسجيل خروج عادي</button>
+            <button class="button" onclick="performForceLogout()">تسجيل خروج قسري</button>
+        </div>
+
+        <div class="test-section">
+            <h3>🧹 تنظيف البيانات</h3>
+            <button class="button" onclick="clearLocalStorage()">مسح التخزين المحلي</button>
+            <button class="button" onclick="clearSessionStorage()">مسح تخزين الجلسة</button>
+            <button class="button danger" onclick="clearAllCookies()">مسح جميع الكوكيز</button>
+            <button class="button danger" onclick="performCompleteCleanup()">تنظيف شامل</button>
+        </div>
+
+        <div id="status"></div>
+        <div id="log" class="log"></div>
+
+        <div class="emergency-section">
+            <h3>🆘 حل الطوارئ</h3>
+            <p>إذا لم تعمل الحلول أعلاه، استخدم هذا الكود في وحدة تحكم المتصفح (F12):</p>
+            <div class="code-block" id="emergencyCode">
+// تنظيف شامل للطوارئ
+localStorage.clear();
+sessionStorage.clear();
+document.cookie.split(";").forEach(c => {
+  const cookieName = c.replace(/^ +/, "").replace(/=.*/, "");
+  // مسح للدومين الحالي
+  document.cookie = cookieName + "=;expires=" + new Date().toUTCString() + ";path=/";
+  // مسح للدومين الفرعي
+  document.cookie = cookieName + "=;expires=" + new Date().toUTCString() + ";path=/;domain=.gear-score.com";
+  // مسح للدومين الرئيسي
+  document.cookie = cookieName + "=;expires=" + new Date().toUTCString() + ";path=/;domain=gear-score.com";
+});
+// إعادة توجيه لصفحة المصادقة
+window.location.href="/auth";
+            </div>
+            <button class="button danger" onclick="copyEmergencyCode()">نسخ كود الطوارئ</button>
+        </div>
+    </div>
+
+    <script>
+        const log = document.getElementById('log');
+        const status = document.getElementById('status');
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString('ar-EG');
+            const logMessage = `[${timestamp}] ${message}\n`;
+            log.textContent += logMessage;
+            log.scrollTop = log.scrollHeight;
+            console.log(message);
+        }
+
+        function setStatus(message, type = 'info') {
+            status.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        async function makeRequest(url, options = {}) {
+            try {
+                addLog(`🔄 طلب إلى: ${url}`);
+                const response = await fetch(url, {
+                    credentials: 'include',
+                    ...options
+                });
+                
+                addLog(`📡 الاستجابة: ${response.status} ${response.statusText}`);
+                
+                // Log cookies from response
+                const cookies = response.headers.get('set-cookie');
+                if (cookies) {
+                    addLog(`🍪 كوكيز جديدة: ${cookies}`);
+                }
+                
+                return response;
+            } catch (error) {
+                addLog(`❌ خطأ: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        async function checkCurrentSession() {
+            addLog('🔍 فحص الجلسة الحالية...');
+            const response = await makeRequest('/api/auth/session');
+            
+            if (response) {
+                const data = await response.text();
+                if (data && data !== '{}' && data !== 'null') {
+                    addLog('✅ يوجد جلسة نشطة');
+                    addLog(`📄 بيانات الجلسة: ${data}`);
+                    setStatus('يوجد جلسة نشطة', 'success');
+                } else {
+                    addLog('❌ لا توجد جلسة نشطة');
+                    setStatus('لا توجد جلسة نشطة', 'warning');
+                }
+            }
+        }
+
+        async function testLogoutEndpoints() {
+            addLog('🧪 اختبار نقاط تسجيل الخروج...');
+            
+            const endpoints = [
+                { name: 'NextAuth Signout', url: '/api/auth/signout', method: 'POST' },
+                { name: 'Enhanced Logout', url: '/api/logout-improved', method: 'POST' },
+                { name: 'Force Logout', url: '/api/force-logout', method: 'POST' }
+            ];
+            
+            for (const endpoint of endpoints) {
+                addLog(`🔄 اختبار: ${endpoint.name}`);
+                const response = await makeRequest(endpoint.url, { method: endpoint.method });
+                
+                if (response && response.ok) {
+                    addLog(`✅ ${endpoint.name}: يعمل بشكل صحيح`);
+                } else {
+                    addLog(`❌ ${endpoint.name}: فشل`);
+                }
+            }
+        }
+
+        function checkCookies() {
+            addLog('🍪 فحص الكوكيز الحالية...');
+            const cookies = document.cookie.split(';');
+            
+            if (cookies.length === 1 && cookies[0] === '') {
+                addLog('❌ لا توجد كوكيز');
+                setStatus('لا توجد كوكيز', 'warning');
+            } else {
+                addLog(`📊 عدد الكوكيز: ${cookies.length}`);
+                cookies.forEach((cookie, index) => {
+                    const cookieName = cookie.split('=')[0].trim();
+                    addLog(`   ${index + 1}. ${cookieName}`);
+                });
+                setStatus(`يوجد ${cookies.length} كوكيز`, 'info');
+            }
+        }
+
+        async function testAuthFlow() {
+            addLog('🔐 اختبار تدفق المصادقة...');
+            
+            // Test auth page
+            const authResponse = await makeRequest('/auth');
+            if (authResponse && authResponse.ok) {
+                addLog('✅ صفحة المصادقة متاحة');
+            } else {
+                addLog('❌ مشكلة في صفحة المصادقة');
+            }
+            
+            // Test error page
+            const errorResponse = await makeRequest('/api/auth/error');
+            addLog(`📄 صفحة الخطأ: ${errorResponse ? errorResponse.status : 'غير متاح'}`);
+        }
+
+        async function performEnhancedLogout() {
+            addLog('🚪 تنفيذ تسجيل خروج محسن...');
+            setStatus('جاري تسجيل الخروج...', 'info');
+            
+            const response = await makeRequest('/api/logout-improved', { method: 'POST' });
+            
+            if (response && response.ok) {
+                addLog('✅ تم تسجيل الخروج المحسن بنجاح');
+                setStatus('تم تسجيل الخروج بنجاح!', 'success');
+                
+                // Clear client-side data
+                clearLocalStorage();
+                clearSessionStorage();
+                
+                setTimeout(() => {
+                    addLog('🔄 إعادة توجيه إلى صفحة المصادقة...');
+                    window.location.href = '/auth';
+                }, 2000);
+            } else {
+                addLog('❌ فشل في تسجيل الخروج المحسن');
+                setStatus('فشل في تسجيل الخروج', 'error');
+            }
+        }
+
+        async function performStandardLogout() {
+            addLog('🚪 تنفيذ تسجيل خروج عادي...');
+            const response = await makeRequest('/api/auth/signout', { method: 'POST' });
+            
+            if (response) {
+                addLog('✅ تم تسجيل الخروج العادي');
+                setTimeout(() => window.location.href = '/auth', 1000);
+            }
+        }
+
+        async function performForceLogout() {
+            addLog('🚪 تنفيذ تسجيل خروج قسري...');
+            const response = await makeRequest('/api/force-logout', { method: 'POST' });
+            
+            if (response) {
+                addLog('✅ تم تسجيل الخروج القسري');
+                clearLocalStorage();
+                clearSessionStorage();
+                setTimeout(() => window.location.href = '/auth', 1000);
+            }
+        }
+
+        function clearLocalStorage() {
+            const itemCount = localStorage.length;
+            localStorage.clear();
+            addLog(`🧹 تم مسح التخزين المحلي (${itemCount} عنصر)`);
+        }
+
+        function clearSessionStorage() {
+            const itemCount = sessionStorage.length;
+            sessionStorage.clear();
+            addLog(`🧹 تم مسح تخزين الجلسة (${itemCount} عنصر)`);
+        }
+
+        function clearAllCookies() {
+            const cookies = document.cookie.split(';');
+            let clearedCount = 0;
+            
+            cookies.forEach(cookie => {
+                const eqPos = cookie.indexOf('=');
+                const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+                
+                if (name) {
+                    // Clear for current domain
+                    document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+                    // Clear for .gear-score.com
+                    document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=.gear-score.com';
+                    // Clear for gear-score.com
+                    document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=gear-score.com';
+                    clearedCount++;
+                }
+            });
+            
+            addLog(`🧹 تم مسح ${clearedCount} كوكيز`);
+        }
+
+        function performCompleteCleanup() {
+            addLog('🧹 تنفيذ تنظيف شامل...');
+            clearLocalStorage();
+            clearSessionStorage();
+            clearAllCookies();
+            
+            setStatus('تم التنظيف الشامل!', 'success');
+            
+            setTimeout(() => {
+                addLog('🔄 إعادة تحميل الصفحة...');
+                window.location.reload();
+            }, 2000);
+        }
+
+        function copyEmergencyCode() {
+            const code = document.getElementById('emergencyCode').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                addLog('📋 تم نسخ كود الطوارئ');
+                setStatus('تم نسخ كود الطوارئ - الصقه في وحدة تحكم المتصفح (F12)', 'success');
+            }).catch(() => {
+                addLog('❌ فشل في نسخ الكود');
+            });
+        }
+
+        // Initialize
+        addLog('🚀 تم تحميل أداة اختبار تسجيل الخروج');
+        addLog('💡 ابدأ بفحص الجلسة الحالية لتشخيص المشكلة');
+    </script>
+</body>
+</html>

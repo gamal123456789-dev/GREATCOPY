@@ -2,7 +2,8 @@
 // Enhanced with account deletion check and improved rate limiting
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from './auth/[...nextauth]';
-import { authLimiter, createRateLimitMiddleware, getClientIdentifier } from '../../lib/rateLimiter';
+// Rate limiting removed for logout endpoints to prevent JSON parsing issues
+// import { authLimiter, createRateLimitMiddleware, getClientIdentifier } from '../../lib/rateLimiter';
 import prisma from '../../lib/prisma';
 
 export default async function handler(req, res) {
@@ -10,21 +11,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  // Apply Rate Limiting
-  const rateLimitCheck = createRateLimitMiddleware(authLimiter);
-  if (!rateLimitCheck(req, res)) {
-    const clientIP = getClientIdentifier(req);
-    console.log('[SECURITY] Force logout rate limit exceeded:', {
-      ip: clientIP,
-      timestamp: new Date().toISOString(),
-      userAgent: req.headers['user-agent']
-    });
-    return; // Rate limit exceeded, response already sent
-  }
+  // Rate limiting removed to prevent JSON parsing issues during rapid logout/login
+  // This allows users to logout and login quickly without encountering rate limits
 
   try {
     const session = await getServerSession(req, res, authOptions);
-    const clientIP = getClientIdentifier(req);
+    const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'unknown';
     
     // Check if user exists in database
     let userExists = false;
@@ -79,7 +71,7 @@ export default async function handler(req, res) {
       accountDeleted: userId && !userExists
     });
   } catch (error) {
-    const clientIP = getClientIdentifier(req);
+    const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'unknown';
     console.error('Error in force logout:', error);
     
     console.error('[SECURITY] Force logout error:', {

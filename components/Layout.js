@@ -12,6 +12,7 @@ import NotificationSystem from './NotificationSystem';
 import ErrorBoundary from './ErrorBoundary';
 import ToastProvider from './Toast';
 import { setupGlobalErrorHandling } from '../lib/clientErrorHandler';
+import { performLogout } from '../utils/logout';
 
 export default function Layout({ children }) {
   const { user, setUser } = useUser();
@@ -44,14 +45,75 @@ export default function Layout({ children }) {
     };
   }, [menuOpen]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    sessionStorage.removeItem('loggedOut');
-    setUser(null);
-    if (session?.user) {
-      signOut({ callbackUrl: 'https://gear-score.com/auth' });
-    } else {
-      window.location.href = 'https://gear-score.com/auth';
+  const handleLogout = async () => {
+    console.log('🚪 [Layout] Logout initiated by user');
+    setMenuOpen(false); // Close dropdown immediately
+    
+    try {
+      // Step 1: Clear user context immediately
+      console.log('🔄 [Layout] Clearing user context...');
+      setUser(null);
+      
+      // Step 2: Clear all client-side storage
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.clear();
+          sessionStorage.clear();
+          console.log('✅ [Layout] Client storage cleared');
+        } catch (storageError) {
+          console.warn('⚠️ [Layout] Storage clear failed:', storageError);
+        }
+      }
+      
+      // Step 3: Call comprehensive logout utility
+      console.log('🔄 [Layout] Calling performLogout utility...');
+      await performLogout(session, setUser);
+      
+      console.log('✅ [Layout] Logout completed successfully');
+      
+    } catch (error) {
+      console.error('❌ [Layout] Logout error:', error);
+      
+      // Enhanced fallback mechanism
+      try {
+        console.log('🔄 [Layout] Attempting fallback logout...');
+        
+        // Try force logout API first
+        const forceLogoutResponse = await fetch('/api/force-logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin'
+        });
+        
+        if (forceLogoutResponse.ok) {
+          console.log('✅ [Layout] Force logout API succeeded');
+        } else {
+          console.warn('⚠️ [Layout] Force logout API failed');
+        }
+        
+        // Then try NextAuth signOut
+        await signOut({ 
+          callbackUrl: 'https://gear-score.com/auth',
+          redirect: false 
+        });
+        
+        console.log('✅ [Layout] NextAuth signOut completed');
+        
+        // Force redirect as final step
+        if (typeof window !== 'undefined') {
+          console.log('🔄 [Layout] Force redirecting to auth page...');
+          window.location.href = 'https://gear-score.com/auth';
+        }
+        
+      } catch (fallbackError) {
+        console.error('❌ [Layout] Fallback logout also failed:', fallbackError);
+        
+        // Emergency redirect
+        if (typeof window !== 'undefined') {
+          console.log('🚨 [Layout] Emergency redirect to auth page...');
+          window.location.href = 'https://gear-score.com/auth';
+        }
+      }
     }
   };
 

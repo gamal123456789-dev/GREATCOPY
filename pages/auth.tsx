@@ -86,7 +86,43 @@ export default function AuthPage() {
     setSuccessMessage("");
     setLoading(true);
 
+    // Basic validation
+    if (!email || !password) {
+      setError("❌ Email and password are required.");
+      setLoading(false);
+      return;
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError("❌ Please enter a valid email address.");
+      setLoading(false);
+      return;
+    }
+
     if (!isLoginMode) {
+      // Username validation for registration
+      if (!username || username.length < 3) {
+        setError("❌ Username must be at least 3 characters long.");
+        setLoading(false);
+        return;
+      }
+
+      if (username.length > 20) {
+        setError("❌ Username must be no more than 20 characters long.");
+        setLoading(false);
+        return;
+      }
+
+      // Username format validation
+      const usernameRegex = /^[a-zA-Z0-9_-]+$/;
+      if (!usernameRegex.test(username)) {
+        setError("❌ Username can only contain letters, numbers, underscores, and hyphens.");
+        setLoading(false);
+        return;
+      }
+
       // Password validation
       const passwordErrors = validatePassword(password);
       if (passwordErrors.length > 0) {
@@ -107,81 +143,93 @@ export default function AuthPage() {
       if (isLoginMode) {
         const result = await signIn("credentials", {
           redirect: false,
-          email,
+          email: email.toLowerCase(),
           password,
         });
 
         if (result?.error) {
           let errorMessage = result.error;
-          // Translate common error messages
-          if (errorMessage.includes('Invalid credentials') || errorMessage.includes('CredentialsSignin')) {
+          // Enhanced error message handling
+          if (errorMessage.includes('Invalid email or password') || errorMessage.includes('CredentialsSignin')) {
             errorMessage = "❌ Invalid login credentials. Please check your email and password.";
           } else if (errorMessage.includes('User not found')) {
             errorMessage = "❌ No account found with this email address. Please register first.";
+          } else if (errorMessage.includes('Please verify your email')) {
+            errorMessage = "❌ Please verify your email address before logging in. Check your inbox for the verification link.";
+          } else if (errorMessage.includes('Too many login attempts')) {
+            errorMessage = "❌ Too many login attempts. Please wait a few minutes before trying again.";
           } else if (errorMessage.includes('Account not verified')) {
             errorMessage = "❌ Account not verified. Please check your email and activate your account.";
           }
           setError(errorMessage);
-        } else {
-          setUser({
-            id: session?.user?.id || "",
-            email,
-            username: session?.user?.username || email.split("@")[0],
-            role: session?.user?.role || "user",
-          });
-          router.push(router.query.from as string || "/");
+        } else if (result?.ok) {
+          // Successful login
+          console.log('[AUTH] Login successful, redirecting...');
+          
+          // Wait for session to be established
+          setTimeout(() => {
+            router.push(router.query.from as string || "/");
+          }, 100);
         }
       } else {
-        const endpoint = "/api/register";
-        const res = await fetch(endpoint, {
+        // Registration
+        const res = await fetch("/api/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password, username }),
+          body: JSON.stringify({ 
+            email: email.toLowerCase(), 
+            password, 
+            username: username.trim() 
+          }),
         });
 
         const result = await res.json();
         if (!res.ok) {
-          // Show specific error message from server
+          // Enhanced error message handling for registration
           let errorMessage = result.error || "❌ Registration failed";
           
-          // Translate and improve common error messages
-          if (errorMessage.includes('email already exists')) {
+          if (errorMessage.includes('Email already registered')) {
             errorMessage = "❌ This email is already registered. Please use a different email or try logging in.";
-          } else if (errorMessage.includes('username must be at least 3 characters')) {
-            errorMessage = "❌ Username must be at least 3 characters long.";
-          } else if (errorMessage.includes('password must be at least 8 characters')) {
+          } else if (errorMessage.includes('Username already taken')) {
+            errorMessage = "❌ This username is already taken. Please choose a different username.";
+          } else if (errorMessage.includes('Username must be between 3 and 20 characters')) {
+            errorMessage = "❌ Username must be between 3 and 20 characters long.";
+          } else if (errorMessage.includes('Username can only contain')) {
+            errorMessage = "❌ Username can only contain letters, numbers, underscores, and hyphens.";
+          } else if (errorMessage.includes('Password must be at least 8 characters')) {
             errorMessage = "❌ Password does not meet requirements. Must contain at least 8 characters with uppercase, lowercase, and number.";
-          } else if (errorMessage.includes('required fields')) {
+          } else if (errorMessage.includes('Email, password, and username are required')) {
             errorMessage = "❌ All fields are required. Please fill in email, password, and username.";
-          } else if (errorMessage.includes('failed to send verification email')) {
+          } else if (errorMessage.includes('Failed to send verification email')) {
             errorMessage = "❌ Failed to send verification email. Please try again later.";
-          } else if (errorMessage.includes('Invalid email format')) {
+          } else if (errorMessage.includes('Please enter a valid email address')) {
             errorMessage = "❌ Invalid email format. Please enter a valid email address.";
+          } else if (errorMessage.includes('Too many registration attempts')) {
+            errorMessage = "❌ Too many registration attempts. Please wait a few minutes before trying again.";
           }
           
           setError(errorMessage);
         } else {
-          // Clear any previous errors and show success message
+          // Successful registration
           setError("");
-          setSuccessMessage(result.message);
+          setSuccessMessage(result.message || "✅ Registration successful! Please check your email to verify your account.");
           
-          // If it's local development (immediate login), redirect to dashboard
-          if (result.message && result.message.includes('immediately')) {
-            // Auto-login for local development
-            const loginResult = await signIn("credentials", {
-              redirect: false,
-              email,
-              password,
-            });
-            
-            if (loginResult && !loginResult.error) {
-              router.push("/");
-            }
-          }
+          // Clear form fields
+          setEmail("");
+          setPassword("");
+          setConfirmPassword("");
+          setUsername("");
+          
+          // Switch to login mode after successful registration
+          setTimeout(() => {
+            setIsLoginMode(true);
+            setSuccessMessage("✅ Account created! You can now sign in with your credentials.");
+          }, 3000);
         }
       }
     } catch (err: any) {
-      setError(err.message || "❌ An unexpected error occurred. Please try again.");
+      console.error('[AUTH] Error during authentication:', err);
+      setError(err.message || "❌ An unexpected error occurred. Please check your internet connection and try again.");
     } finally {
       setLoading(false);
     }

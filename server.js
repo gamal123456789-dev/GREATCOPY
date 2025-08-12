@@ -22,7 +22,7 @@ const prisma = new PrismaClient();
 const dev = process.env.NODE_ENV !== 'production';
 const LOG_VERBOSE = process.env.LOG_VERBOSE === 'true';
 const hostname = '0.0.0.0'; // Changed from 'localhost' to '0.0.0.0' to allow network access
-const port = process.env.PORT || 3000; // Updated to use port 3000
+const port = process.env.PORT || 5200; // Updated to use port 5200
 
 // when using middleware `hostname` and `port` must be provided below
 const app = next({ dev, hostname, port });

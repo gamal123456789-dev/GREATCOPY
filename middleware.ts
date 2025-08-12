@@ -100,9 +100,9 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - api/auth (NextAuth endpoints)
+     * - api/ (ALL API endpoints to prevent JSON parsing issues)
      */
-    '/((?!_next/static|_next/image|favicon.ico|api/auth).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/).*)',
   ],
 };
 

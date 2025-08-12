@@ -5,11 +5,12 @@ import { useSession, signOut } from 'next-auth/react';
 import { useUser } from '../context/UserContext';
 import { useSocket } from '../hooks/useSocket';
 import NotificationCenter from './NotificationCenter';
+import { performLogout } from '../utils/logout';
 
 export default function Navbar() {
   const router = useRouter();
   const { data: session } = useSession();
-  const { user } = useUser();
+  const { user, setUser } = useUser();
   const { notifications, isConnected, unreadMessagesCount } = useSocket();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -29,7 +30,14 @@ export default function Navbar() {
   }, [menuOpen]);
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: 'https://gear-score.com/auth?mode=login' });
+    try {
+      console.log('🚪 Navbar logout initiated...');
+      await performLogout(session, setUser);
+    } catch (error) {
+      console.error('❌ Navbar logout error:', error);
+      // Fallback to simple signOut if comprehensive logout fails
+      await signOut({ callbackUrl: 'https://gear-score.com/auth?mode=login' });
+    }
   };
 
   const firstName = session?.user?.name || user?.username || session?.user?.email?.split('@')[0] || user?.email?.split('@')[0] || 'User';

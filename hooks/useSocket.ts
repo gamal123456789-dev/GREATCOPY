@@ -76,7 +76,11 @@ export const useSocket = () => {
             // Socket token received, initializing connection
           }
           
-          newSocket = io({
+          const socketUrl = process.env.NODE_ENV === 'production' 
+            ? process.env.NEXT_PUBLIC_BASE_URL || 'https://gear-score.com'
+            : 'http://localhost:5200';
+          
+          newSocket = io(socketUrl, {
             auth: { token },
             transports: ['websocket', 'polling'],
             timeout: 5000,
@@ -87,7 +91,11 @@ export const useSocket = () => {
             console.warn('⚠️ Failed to get auth token, falling back to unauthenticated connection:', err.message);
           }
           // Fall back to unauthenticated connection
-          newSocket = io({
+          const socketUrl = process.env.NODE_ENV === 'production' 
+            ? process.env.NEXT_PUBLIC_BASE_URL || 'https://gear-score.com'
+            : 'http://localhost:5200';
+          
+          newSocket = io(socketUrl, {
             transports: ['websocket', 'polling'],
             timeout: 5000,
           });
@@ -98,7 +106,11 @@ export const useSocket = () => {
           // No session available, initializing unauthenticated connection
         }
         
-        newSocket = io({
+        const socketUrl = process.env.NODE_ENV === 'production' 
+          ? process.env.NEXT_PUBLIC_BASE_URL || 'https://gear-score.com'
+          : 'http://localhost:5200';
+        
+        newSocket = io(socketUrl, {
           transports: ['websocket', 'polling'],
           timeout: 5000,
         });
@@ -114,12 +126,12 @@ export const useSocket = () => {
           // Reset joined room on reconnection
           setJoinedRoomId(null);
         })
-        .on('connect_error', (err) => {
+        .on('connect_error', (err: any) => {
           if (process.env.NODE_ENV === 'development') {
             console.error('Connection Error:', err.message);
           }
           setIsConnected(false);
-          setConnectionRetries(prev => prev + 1);
+          setConnectionRetries((prev: number) => prev + 1);
         })
         .on('connect_timeout', () => {
           if (process.env.NODE_ENV === 'development') {
@@ -141,9 +153,9 @@ export const useSocket = () => {
           
           try {
             // Force immediate update of messages
-            setMessages(prev => {
+            setMessages((prev: ChatMessage[]) => {
               // Check if message already exists (avoid duplicates)
-              const exists = prev.some(msg => msg.id === messageData.id);
+              const exists = prev.some((msg: ChatMessage) => msg.id === messageData.id);
               if (exists) {
                 if (process.env.NODE_ENV === 'development') {
                   // Message already exists, skipping duplicate
@@ -153,7 +165,7 @@ export const useSocket = () => {
               
               // Only remove temp messages that match this specific message
               // (when the real message arrives to replace the optimistic one)
-              const filtered = prev.filter(msg => {
+              const filtered = prev.filter((msg: ChatMessage) => {
                 if (!msg.id.startsWith('temp_')) return true;
                 // Keep temp messages that don't match this real message
                 return !(msg.orderId === messageData.orderId && 
@@ -170,40 +182,40 @@ export const useSocket = () => {
               
               // Force immediate UI update by triggering a re-render, especially for images
               setTimeout(() => {
-                if (process.env.NODE_ENV === 'development') {
-                  // Force updating messages state for immediate display
-                }
-                setMessages(current => [...current]); // Force re-render
-              }, 0);
+                  if (process.env.NODE_ENV === 'development') {
+                    // Force updating messages state for immediate display
+                  }
+                  setMessages((current: ChatMessage[]) => [...current]); // Force re-render
+                }, 0);
               
               // Additional force update for image messages to ensure immediate display
               if (messageData.messageType === 'image') {
                 // Multiple force updates with different timings to ensure image display
                 setTimeout(() => {
-                  if (process.env.NODE_ENV === 'development') {
-                    // First additional force update for image message
-                  }
-                  setMessages(current => [...current]); // Additional force re-render for images
-                }, 50);
+                    if (process.env.NODE_ENV === 'development') {
+                      // First additional force update for image message
+                    }
+                    setMessages((current: ChatMessage[]) => [...current]); // Additional force re-render for images
+                  }, 50);
                 
                 setTimeout(() => {
-                  if (process.env.NODE_ENV === 'development') {
-                    // Second additional force update for image message
-                  }
-                  setMessages(current => [...current]); // Another force re-render
-                }, 150);
+                    if (process.env.NODE_ENV === 'development') {
+                      // Second additional force update for image message
+                    }
+                    setMessages((current: ChatMessage[]) => [...current]); // Another force re-render
+                  }, 150);
                 
                 setTimeout(() => {
-                  if (process.env.NODE_ENV === 'development') {
-                    // Final force update for image message
-                  }
-                  setMessages(current => [...current]); // Final force re-render
-                }, 300);
+                    if (process.env.NODE_ENV === 'development') {
+                      // Final force update for image message
+                    }
+                    setMessages((current: ChatMessage[]) => [...current]); // Final force re-render
+                  }, 300);
               }
               
               // Save updated messages in session data
               if (messageData.orderId) {
-                setSessionData(prevData => {
+                setSessionData((prevData: Map<string, ChatMessage[]>) => {
                   const newData = new Map(prevData);
                   newData.set(messageData.orderId, updatedMessages);
                   return newData;
@@ -218,7 +230,7 @@ export const useSocket = () => {
             
             // Update unread count if message is from another user
             if (session?.user?.id && messageData.senderId !== session.user.id) {
-              setUnreadMessagesCount(prev => prev + 1);
+              setUnreadMessagesCount((prev: number) => prev + 1);
             }
             
             // Play sound and show notification for message recipients
@@ -291,7 +303,7 @@ export const useSocket = () => {
               timestamp: notification.timestamp instanceof Date ? notification.timestamp : new Date(notification.timestamp)
             };
             
-            setNotifications(prev => [processedNotification, ...prev]);
+            setNotifications((prev: Notification[]) => [processedNotification, ...prev]);
             
             // Dispatch custom event for NotificationSystem
             if (typeof window !== 'undefined') {
@@ -340,7 +352,7 @@ export const useSocket = () => {
             }
           }
         })
-        .on('order-status-updated', (data) => {
+        .on('order-status-updated', (data: any) => {
           if (process.env.NODE_ENV === 'development') {
             console.log('📋 Order status updated:', data);
           }
@@ -352,13 +364,13 @@ export const useSocket = () => {
             }));
           }
         })
-        .on('messages-marked-read', (data) => {
+        .on('messages-marked-read', (data: any) => {
           if (process.env.NODE_ENV === 'development') {
             console.log('📖 Messages marked as read:', data);
           }
           // Update message read status
-          setMessages(prev => {
-            const updatedMessages = prev.map(msg => 
+          setMessages((prev: ChatMessage[]) => {
+            const updatedMessages = prev.map((msg: ChatMessage) => 
               msg.orderId === data.orderId && msg.senderId !== session?.user?.id
                 ? { ...msg, isRead: true }
                 : msg
@@ -366,7 +378,7 @@ export const useSocket = () => {
             
             // Save updated messages in session data
             if (data.orderId) {
-              setSessionData(prevData => {
+              setSessionData((prevData: Map<string, ChatMessage[]>) => {
                 const newData = new Map(prevData);
                 newData.set(data.orderId, updatedMessages);
                 return newData;
@@ -376,7 +388,7 @@ export const useSocket = () => {
             return updatedMessages;
           });
         })
-        .on('error', (error) => {
+        .on('error', (error: any) => {
           if (process.env.NODE_ENV === 'development') {
             console.error('❌ Socket error:', error);
           }
@@ -384,7 +396,7 @@ export const useSocket = () => {
   
       socketRef.current = newSocket;
   
-    } catch (err) {
+    } catch (err: any) {
       if (process.env.NODE_ENV === 'development') {
         if (axios.isAxiosError(err)) {
           if (err.response?.status === 401) {
@@ -401,7 +413,7 @@ export const useSocket = () => {
         }
       }
       setIsConnected(false);
-      setConnectionRetries(prev => prev + 1);
+      setConnectionRetries((prev: number) => prev + 1);
       setTimeout(initSocket, 3000);
     }
   }, [session?.user?.id]);
@@ -621,11 +633,11 @@ export const useSocket = () => {
       senderName: session.user.username || session.user.name || 'You'
     };
     
-    setMessages(prev => {
+    setMessages((prev: ChatMessage[]) => {
       const updatedMessages = [...prev, optimisticMessage];
       
       // Save updated messages in session data
-      setSessionData(prevData => {
+      setSessionData((prevData: Map<string, ChatMessage[]>) => {
         const newData = new Map(prevData);
         newData.set(orderId, updatedMessages);
         return newData;
@@ -673,8 +685,8 @@ export const useSocket = () => {
         const result = await response.json();
         
         // Remove optimistic message and add real message
-        setMessages(prev => {
-          const filteredMessages = prev.filter(msg => msg.id !== tempId);
+        setMessages((prev: ChatMessage[]) => {
+          const filteredMessages = prev.filter((msg: ChatMessage) => msg.id !== tempId);
           const realMessage = {
             id: result.id,
             orderId: result.orderId,
@@ -692,7 +704,7 @@ export const useSocket = () => {
           const updatedMessages = [...filteredMessages, realMessage];
           
           // Save updated messages in session data
-          setSessionData(prevData => {
+          setSessionData((prevData: Map<string, ChatMessage[]>) => {
             const newData = new Map(prevData);
             newData.set(orderId, updatedMessages);
             return newData;
@@ -714,10 +726,10 @@ export const useSocket = () => {
       }
       
       // Remove optimistic message on failure
-      setMessages(prev => {
-        const filteredMessages = prev.filter(msg => msg.id !== tempId);
+      setMessages((prev: ChatMessage[]) => {
+        const filteredMessages = prev.filter((msg: ChatMessage) => msg.id !== tempId);
         
-        setSessionData(prevData => {
+        setSessionData((prevData: Map<string, ChatMessage[]>) => {
           const newData = new Map(prevData);
           newData.set(orderId, filteredMessages);
           return newData;
@@ -788,7 +800,7 @@ export const useSocket = () => {
 
   // Clear specific notification
   const removeNotification = (index: number) => {
-    setNotifications(prev => prev.filter((_, i) => i !== index));
+    setNotifications((prev: Notification[]) => prev.filter((_, i) => i !== index));
   };
 
   // Clear sent messages counter
@@ -815,7 +827,7 @@ export const useSocket = () => {
   // Function to determine unread message count from current messages
   const getUnreadMessagesCount = () => {
     if (!session?.user?.id) return 0;
-    return messages.filter(msg => 
+    return messages.filter((msg: ChatMessage) => 
       msg.senderId !== session.user.id && 
       !msg.isRead && 
       !msg.isSystem
@@ -873,7 +885,7 @@ export const useSocket = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.messages) {
-          const dbMessages = data.messages.map((msg: any) => ({
+          const dbMessages = data.messages.map((msg: any): ChatMessage => ({
             ...msg,
             timestamp: new Date(msg.timestamp)
           }));
@@ -882,7 +894,7 @@ export const useSocket = () => {
           const mergedMessages = mergeMessages(cachedMessages, dbMessages);
           
           // Save messages in session data
-          setSessionData(prevData => {
+          setSessionData((prevData: Map<string, ChatMessage[]>) => {
             const newData = new Map(prevData);
             newData.set(orderId, mergedMessages);
             return newData;
@@ -986,7 +998,7 @@ export const useSocket = () => {
   
   // Clear specific session data
   const clearSessionData = useCallback((orderId: string) => {
-    setSessionData(prevData => {
+    setSessionData((prevData: Map<string, ChatMessage[]>) => {
       const newData = new Map(prevData);
       newData.delete(orderId);
       return newData;
@@ -1009,7 +1021,7 @@ export const useSocket = () => {
     const messageMap = new Map<string, ChatMessage>();
     
     // Add database messages first
-    dbMessages.forEach(msg => {
+    dbMessages.forEach((msg: ChatMessage) => {
       messageMap.set(msg.id, {
         ...msg,
         timestamp: new Date(msg.timestamp)
@@ -1017,7 +1029,7 @@ export const useSocket = () => {
     });
     
     // Add local messages (update if found)
-    localMessages.forEach(msg => {
+    localMessages.forEach((msg: ChatMessage) => {
       if (!msg.id.startsWith('temp_')) {
         messageMap.set(msg.id, {
           ...msg,
@@ -1027,7 +1039,7 @@ export const useSocket = () => {
     });
     
     // Sort messages by time
-    return Array.from(messageMap.values()).sort((a, b) => 
+    return Array.from(messageMap.values()).sort((a: ChatMessage, b: ChatMessage) => 
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
   }, []);

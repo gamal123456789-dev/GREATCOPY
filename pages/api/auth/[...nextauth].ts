@@ -8,9 +8,19 @@ import type { AuthOptions } from "next-auth";
 import { authLimiter, getClientIdentifier } from "../../../lib/rateLimiter";
 import { v4 as uuidv4 } from "uuid";
 
+// Debug logging for Discord provider configuration
+console.log("NextAuth Discord Provider Debug:", {
+  clientIdSet: !!process.env.DISCORD_CLIENT_ID,
+  clientSecretSet: !!process.env.DISCORD_CLIENT_SECRET,
+  clientIdLength: process.env.DISCORD_CLIENT_ID?.length,
+  clientSecretLength: process.env.DISCORD_CLIENT_SECRET?.length,
+  nextAuthUrl: process.env.NEXTAUTH_URL,
+  nextAuthSecretSet: !!process.env.NEXTAUTH_SECRET
+});
+
 export const authOptions: AuthOptions = {
   // Using JWT sessions for better compatibility
-  // adapter: PrismaAdapter(prisma),
+  // adapter: PrismaAdapter(prisma), // Commented out to avoid conflicts with JWT strategy
   providers: [
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID!,
@@ -18,15 +28,14 @@ export const authOptions: AuthOptions = {
       authorization: {
         url: "https://discord.com/api/oauth2/authorize",
         params: {
-          scope: "identify email",
+          scope: "identify email guilds",
           response_type: "code",
-          redirect_uri: `${process.env.NEXTAUTH_URL}/api/auth/callback/discord`,
-          prompt: "consent",
-          access_type: "offline",
         },
       },
-      allowDangerousEmailAccountLinking: true,
+      token: "https://discord.com/api/oauth2/token",
+      userinfo: "https://discord.com/api/users/@me",
       profile(profile) {
+        console.log("Discord profile received:", profile);
         return {
           id: profile.id,
           name: profile.username || profile.global_name || `User${profile.id}`,
@@ -44,214 +53,145 @@ export const authOptions: AuthOptions = {
       },
       async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) {
-          return null;
+          throw new Error("Email and password are required");
         }
 
-        try {
-          const user = await prisma.user.findUnique({
-            where: { email: credentials.email },
-            select: {
-              id: true,
-              email: true,
-              password: true,
-              role: true,
-              username: true,
-              emailVerified: true,
-            },
-          });
-
-          if (!user || !user.password) {
-            return null;
-          }
-
-          const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
-          if (!isPasswordValid) {
-            return null;
-          }
-
-          return {
-            id: user.id,
-            email: user.email,
-            role: user.role,
-            username: user.username || undefined,
-            emailVerified: user.emailVerified,
-          };
-        } catch (error) {
-          console.error("Credentials auth error:", error);
-          return null;
+        // Security: Rate limiting for login attempts
+        const clientId = getClientIdentifier(req);
+        if (!authLimiter.isAllowed(clientId)) {
+          console.log(`[SECURITY] Login rate limit exceeded for ${clientId} at ${new Date().toISOString()}`);
+          throw new Error('Too many login attempts. Please try again later.');
         }
+
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+        });
+
+        if (!user || !user.password) {
+          // Security logging for failed login attempts
+          console.log(`[SECURITY] Failed login attempt for ${credentials.email} from ${clientId} at ${new Date().toISOString()}`);
+          throw new Error("Invalid email or password");
+        }
+
+        const valid = await bcrypt.compare(credentials.password, user.password);
+
+        if (!valid) {
+          // Security logging for failed password attempts
+          console.log(`[SECURITY] Failed login attempt for ${credentials.email} from ${clientId} at ${new Date().toISOString()}`);
+          throw new Error("Invalid email or password");
+        }
+
+        if (!user.emailVerified) {
+          throw new Error("Please verify your email before logging in");
+        }
+
+        // Security logging for successful login
+        console.log(`[SECURITY] Successful login for ${credentials.email} from ${clientId} at ${new Date().toISOString()}`);
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.username || user.email.split("@")[0],
+          role: user.role,
+          username: user.username || undefined,
+        };
       },
     }),
   ],
   session: {
     strategy: "jwt" as const,
-    maxAge: 30 * 24 * 60 * 60, // 30 days - longer for better UX
-    updateAge: 24 * 60 * 60, // Update session every 24 hours
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 24 * 60 * 60, // Update session every day
   },
   callbacks: {
     async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string || "user";
-        session.user.isAdmin = (token.role as string) === "ADMIN";
-        session.user.username = token.username as string || token.name as string;
-        session.user.email = token.email as string;
-        session.user.name = token.name as string || token.username as string;
-        session.user.image = token.image as string;
+      if (token && session.user) {
+        session.user.id = token.sub!;
+        session.user.role = token.role as string;
+        session.user.username = token.username as string;
       }
-
       return session;
     },
-    async jwt({ token, user, account, trigger }) {
-      // Initial sign in - store user data in token
-      if (account && user) {
-        console.log("🔐 Initial token creation for user:", user.email);
-        
-        if (account.provider === "discord") {
-          // Discord OAuth flow
-          if (!user.email) {
-            console.error("❌ Discord user missing email");
-            return token;
-          }
+    async jwt({ token, user, account }) {
+      if (user) {
+        token.role = user.role;
+        token.username = user.username;
+      }
+      
+      // Handle Discord login
+      if (account?.provider === "discord" && user) {
+        try {
+          // Check if user exists in database
+          let dbUser = await prisma.user.findUnique({
+            where: { email: user.email! },
+          });
 
-          try {
-            // Check if user exists
-            const existingUser = await prisma.user.findUnique({
-              where: { email: user.email },
-              select: {
-                id: true,
-                email: true,
-                username: true,
-                role: true,
-                emailVerified: true,
+          if (!dbUser) {
+            // Create new user for Discord login
+            dbUser = await prisma.user.create({
+              data: {
+                id: uuidv4(),
+                email: user.email!,
+                username: user.name || user.email!.split('@')[0],
+                role: 'user',
+                emailVerified: new Date(), // Discord emails are considered verified
+                image: user.image,
               },
             });
-
-            if (existingUser) {
-              // Link Discord account to existing user
-              console.log("🔗 Linking Discord account to existing user:", existingUser.email);
-              
-              await prisma.user.update({
-                where: { id: existingUser.id },
-                data: {
-                  image: user?.image || undefined,
-                  name: user?.name || existingUser.username,
-                  emailVerified: new Date(), // Discord users are verified
-                },
-              });
-
-              return {
-                ...token,
-                id: existingUser.id,
-                email: existingUser.email,
-                role: existingUser.role,
-                username: existingUser.username,
-                image: user?.image,
-                name: user?.name || existingUser.username,
-              };
-            } else {
-              // Create new user from Discord
-              console.log("🆕 Creating new user from Discord:", user.email);
-              
-              const newUser = await prisma.user.create({
-                data: {
-                  id: uuidv4(),
-                  email: user.email,
-                  username: user.name || `user_${Date.now()}`,
-                  role: "user",
-                  emailVerified: new Date(),
-                  image: user.image,
-                  name: user.name,
-                },
-              });
-
-              return {
-                ...token,
-                id: newUser.id,
-                email: newUser.email,
-                role: newUser.role,
-                username: newUser.username,
-                image: newUser.image,
-                name: newUser.name,
-              };
-            }
-          } catch (error) {
-            console.error("❌ Discord account linking error:", error);
-            return token;
+            console.log(`[AUTH] New Discord user created: ${user.email}`);
+          } else {
+            // Update existing user with Discord info
+            dbUser = await prisma.user.update({
+              where: { id: dbUser.id },
+              data: {
+                username: user.name || dbUser.username,
+                image: user.image || dbUser.image,
+                emailVerified: dbUser.emailVerified || new Date(),
+              },
+            });
+            console.log(`[AUTH] Existing user updated with Discord info: ${user.email}`);
           }
-        } else {
-          // Credentials flow
-          return {
-            ...token,
-            id: user.id,
-            email: user.email,
-            role: user.role,
-            username: user.username || undefined,
-            emailVerified: (user as any).emailVerified,
-          };
+
+          token.role = dbUser.role;
+          token.username = dbUser.username;
+          token.sub = dbUser.id;
+        } catch (error) {
+          console.error('[AUTH] Discord user creation/update error:', error);
+          throw new Error('Failed to process Discord login');
         }
       }
-
-      // Return previous token if the access token has not expired yet
-      if (Date.now() < (token.exp as number * 1000)) {
-        return token;
-      }
-
-      // Access token has expired, try to update it
-      try {
-        const refreshedUser = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: {
-            id: true,
-            email: true,
-            role: true,
-            username: true,
-            emailVerified: true,
-            image: true,
-            name: true,
-          },
-        });
-
-        if (refreshedUser) {
-          console.log("🔄 Refreshing token for user:", refreshedUser.email);
-          return {
-            ...token,
-            id: refreshedUser.id,
-            email: refreshedUser.email,
-            role: refreshedUser.role,
-            username: refreshedUser.username,
-            emailVerified: refreshedUser.emailVerified,
-            image: refreshedUser.image,
-            name: refreshedUser.name,
-            exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60), // 30 days
-          };
-        }
-      } catch (error) {
-        console.error("❌ Token refresh error:", error);
-      }
-
+      
       return token;
     },
     async signIn({ user, account, profile }) {
-      console.log("🔐 Sign-in attempt:", { email: user.email, provider: account?.provider });
-      
       if (account?.provider === "discord") {
-        if (!user?.email) {
-          console.error("❌ Discord sign-in missing email");
+        if (!user.email) {
+          console.log('[AUTH] Discord login failed: No email provided');
           return false;
         }
-        console.log("✅ Discord sign-in successful for:", user.email);
+        console.log(`[AUTH] Discord login successful for: ${user.email}`);
         return true;
       }
-      
       return true;
     },
   },
   pages: {
     signIn: "/auth",
+    signOut: "/auth",
     error: "/auth",
+    verifyRequest: "/auth",
+    newUser: "/auth"
   },
   events: {
+    async signIn({ user, account, profile, isNewUser }) {
+      console.log(`[AUTH] User signed in: ${user.email} via ${account?.provider}`);
+      if (isNewUser) {
+        console.log(`[AUTH] New user registered: ${user.email}`);
+      }
+    },
+    async session({ session, token }) {
+      console.log(`[AUTH] Session accessed for: ${session.user?.email}`);
+    },
     async signOut({ token }) {
       console.log("🚪 Sign-out initiated for token:", token?.email);
       
@@ -276,50 +216,11 @@ export const authOptions: AuthOptions = {
         sameSite: 'lax',
         path: '/',
         secure: process.env.NODE_ENV === 'production',
-        maxAge: 30 * 24 * 60 * 60, // 30 days - match session maxAge
-        domain: undefined // Remove domain restriction to fix logout issues
-      }
-    },
-    callbackUrl: {
-      name: `next-auth.callback-url`,
-      options: {
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production' // Set to true for production domain
-      }
-    },
-    csrfToken: {
-      name: `next-auth.csrf-token`,
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production' // Set to true for production domain
-      }
-    },
-    pkceCodeVerifier: {
-      name: `next-auth.pkce.code_verifier`,
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production', // Set to true for production domain
-        maxAge: 900 // 15 minutes
-      }
-    },
-    state: {
-      name: `next-auth.state`,
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production', // Set to true for production domain
-        maxAge: 900 // 15 minutes
+        domain: process.env.NODE_ENV === 'production' ? '.gear-score.com' : undefined
       }
     }
   },
-  debug: process.env.NODE_ENV === 'development', // Only enable debug in development
-  useSecureCookies: process.env.NODE_ENV === 'production'
+  debug: process.env.NODE_ENV === 'development',
 };
 
 export default NextAuth(authOptions);

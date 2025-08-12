@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اختبار تسجيل الخروج - Gear Score</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .test-section {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 4px solid #4CAF50;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #4CAF50;
+        }
+        button {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 8px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+        button.danger {
+            background: linear-gradient(45deg, #f44336, #d32f2f);
+            box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
+        }
+        button.danger:hover {
+            box-shadow: 0 6px 20px rgba(244, 67, 54, 0.4);
+        }
+        .log {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 4px;
+        }
+        .log-success { background: rgba(76, 175, 80, 0.2); }
+        .log-error { background: rgba(244, 67, 54, 0.2); }
+        .log-info { background: rgba(33, 150, 243, 0.2); }
+        .log-warning { background: rgba(255, 193, 7, 0.2); }
+        .status-card {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 10px;
+            border-radius: 20px;
+            font-weight: bold;
+            min-width: 120px;
+            text-align: center;
+        }
+        .status-success { background: rgba(76, 175, 80, 0.3); }
+        .status-error { background: rgba(244, 67, 54, 0.3); }
+        .status-warning { background: rgba(255, 193, 7, 0.3); }
+        .status-info { background: rgba(33, 150, 243, 0.3); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚪 اختبار تسجيل الخروج</h1>
+        
+        <div class="test-section">
+            <h3>📊 حالة الجلسة الحالية</h3>
+            <div id="sessionStatus">
+                <div class="status-card status-info">جاري التحقق...</div>
+            </div>
+            <button onclick="checkSession()">🔍 فحص الجلسة</button>
+        </div>
+
+        <div class="test-section">
+            <h3>🚪 اختبار تسجيل الخروج</h3>
+            <button onclick="testNextAuthLogout()">NextAuth تسجيل خروج</button>
+            <button onclick="testForceLogout()">تسجيل خروج قسري</button>
+            <button onclick="testImprovedLogout()">تسجيل خروج محسن</button>
+            <button class="danger" onclick="emergencyLogout()">🆘 تسجيل خروج طارئ</button>
+        </div>
+
+        <div class="test-section">
+            <h3>🧹 تنظيف البيانات</h3>
+            <button onclick="clearStorage()">مسح التخزين المحلي</button>
+            <button onclick="clearCookies()">مسح ملفات تعريف الارتباط</button>
+            <button class="danger" onclick="clearAll()">مسح كل شيء</button>
+        </div>
+
+        <div class="test-section">
+            <h3>📋 سجل الأحداث</h3>
+            <div id="logContainer" class="log"></div>
+            <button onclick="clearLog()">مسح السجل</button>
+        </div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString('ar-SA');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.innerHTML = `[${timestamp}] ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function updateSessionStatus(status, message) {
+            const statusDiv = document.getElementById('sessionStatus');
+            statusDiv.innerHTML = `<div class="status-card status-${status}">${message}</div>`;
+        }
+
+        async function checkSession() {
+            log('🔍 فحص حالة الجلسة...', 'info');
+            
+            try {
+                const response = await fetch('/api/auth/session', {
+                    method: 'GET',
+                    credentials: 'same-origin'
+                });
+                
+                if (response.ok) {
+                    const sessionData = await response.json();
+                    
+                    if (sessionData.user) {
+                        log(`✅ جلسة نشطة: ${sessionData.user.email || sessionData.user.name || 'مستخدم'}`, 'success');
+                        updateSessionStatus('success', 'جلسة نشطة');
+                    } else {
+                        log('❌ لا توجد جلسة نشطة', 'warning');
+                        updateSessionStatus('warning', 'لا توجد جلسة');
+                    }
+                } else {
+                    log(`❌ فشل فحص الجلسة: ${response.status}`, 'error');
+                    updateSessionStatus('error', 'خطأ في الفحص');
+                }
+            } catch (error) {
+                log(`❌ خطأ في فحص الجلسة: ${error.message}`, 'error');
+                updateSessionStatus('error', 'خطأ في الاتصال');
+            }
+        }
+
+        async function testNextAuthLogout() {
+            log('🚪 اختبار NextAuth تسجيل الخروج...', 'info');
+            
+            try {
+                const response = await fetch('/api/auth/signout', {
+                    method: 'POST',
+                    credentials: 'same-origin'
+                });
+                
+                if (response.ok) {
+                    log('✅ NextAuth تسجيل الخروج نجح', 'success');
+                    setTimeout(checkSession, 1000);
+                } else {
+                    log(`❌ NextAuth تسجيل الخروج فشل: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ خطأ في NextAuth تسجيل الخروج: ${error.message}`, 'error');
+            }
+        }
+
+        async function testForceLogout() {
+            log('🔨 اختبار تسجيل الخروج القسري...', 'info');
+            
+            try {
+                const response = await fetch('/api/force-logout', {
+                    method: 'POST',
+                    credentials: 'same-origin'
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    log(`✅ تسجيل الخروج القسري نجح: ${result.message}`, 'success');
+                    setTimeout(checkSession, 1000);
+                } else {
+                    log(`❌ تسجيل الخروج القسري فشل: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ خطأ في تسجيل الخروج القسري: ${error.message}`, 'error');
+            }
+        }
+
+        async function testImprovedLogout() {
+            log('⚡ اختبار تسجيل الخروج المحسن...', 'info');
+            
+            try {
+                const response = await fetch('/api/logout-improved', {
+                    method: 'POST',
+                    credentials: 'same-origin'
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    log(`✅ تسجيل الخروج المحسن نجح: ${result.message}`, 'success');
+                    setTimeout(checkSession, 1000);
+                } else {
+                    log(`❌ تسجيل الخروج المحسن فشل: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ خطأ في تسجيل الخروج المحسن: ${error.message}`, 'error');
+            }
+        }
+
+        function clearStorage() {
+            log('🧹 مسح التخزين المحلي...', 'info');
+            
+            if (typeof Storage !== 'undefined') {
+                localStorage.clear();
+                sessionStorage.clear();
+                log('✅ تم مسح التخزين المحلي', 'success');
+            } else {
+                log('❌ التخزين المحلي غير مدعوم', 'error');
+            }
+        }
+
+        function clearCookies() {
+            log('🍪 مسح ملفات تعريف الارتباط...', 'info');
+            
+            const cookies = document.cookie.split(';');
+            let cleared = 0;
+            
+            cookies.forEach(cookie => {
+                const eqPos = cookie.indexOf('=');
+                const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+                if (name) {
+                    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+                    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`;
+                    cleared++;
+                }
+            });
+            
+            log(`✅ تم مسح ${cleared} ملف تعريف ارتباط`, 'success');
+        }
+
+        function clearAll() {
+            log('🧹 مسح جميع البيانات...', 'warning');
+            clearStorage();
+            clearCookies();
+            log('✅ تم مسح جميع البيانات', 'success');
+        }
+
+        function emergencyLogout() {
+            log('🆘 تسجيل خروج طارئ...', 'warning');
+            
+            // Clear all storage
+            clearAll();
+            
+            // Force redirect after a short delay
+            setTimeout(() => {
+                log('🔄 إعادة توجيه إلى صفحة تسجيل الدخول...', 'info');
+                window.location.href = '/auth';
+            }, 2000);
+        }
+
+        function clearLog() {
+            document.getElementById('logContainer').innerHTML = '';
+        }
+
+        // Auto-check session on page load
+        window.addEventListener('load', () => {
+            log('🚀 تم تحميل صفحة اختبار تسجيل الخروج', 'info');
+            checkSession();
+        });
+
+        // Make emergency logout available globally
+        window.emergencyLogout = emergencyLogout;
+    </script>
+</body>
+</html>
