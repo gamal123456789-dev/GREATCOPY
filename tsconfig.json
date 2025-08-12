@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ESNext", // Make sure `target` is ESNext
+    "module": "ESNext", // Make sure `module` is ESNext
+    "moduleResolution": "node", // Specify module resolution method
+    "esModuleInterop": true, // Enable interop between ES Modules and CommonJS
+    "allowSyntheticDefaultImports": true,
+    "jsx": "preserve", // Make sure JSX is configured correctly
+    "strict": true, // Enable strict type checking
+    "noEmit": true, // Do not emit JS files
+    "skipLibCheck": true,
+    "lib": [
+      "dom",
+      "esnext"
+    ] // Make sure libraries are configured correctly
+    ,
+    "allowJs": true,
+    "incremental": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true
+  },
+  "include": [
+    "next-env.d.ts", // Add Next.js type definitions
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

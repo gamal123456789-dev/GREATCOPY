@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Authentication Test - Gear Score</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .btn-danger {
+            background: #dc3545;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        .btn-success {
+            background: #28a745;
+        }
+        .btn-success:hover {
+            background: #218838;
+        }
+        .btn-warning {
+            background: #ffc107;
+            color: black;
+        }
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .status-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            text-align: center;
+        }
+        .status-card.success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+        }
+        .status-card.error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        .status-card.warning {
+            background: #fff3cd;
+            border-color: #ffeaa7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Complete Authentication Test - Gear Score</h1>
+        <p>This page tests all authentication functionality to identify any issues.</p>
+        
+        <div class="status-grid">
+            <div class="status-card" id="serverStatus">
+                <h4>Server Status</h4>
+                <p>Checking...</p>
+            </div>
+            <div class="status-card" id="nextAuthStatus">
+                <h4>NextAuth Status</h4>
+                <p>Checking...</p>
+            </div>
+            <div class="status-card" id="csrfStatus">
+                <h4>CSRF Status</h4>
+                <p>Checking...</p>
+            </div>
+            <div class="status-card" id="sessionStatus">
+                <h4>Session Status</h4>
+                <p>Checking...</p>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>1. Server Health Check</h3>
+            <button class="btn btn-success" onclick="runHealthCheck()">Run Health Check</button>
+            <div id="healthResults" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. NextAuth Endpoints Test</h3>
+            <button class="btn" onclick="testNextAuthEndpoints()">Test All Endpoints</button>
+            <div id="nextAuthResults" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. Authentication Flow Test</h3>
+            <button class="btn btn-warning" onclick="testAuthFlow()">Test Auth Flow</button>
+            <div id="authFlowResults" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>4. Session Management Test</h3>
+            <button class="btn" onclick="testSessionManagement()">Test Session</button>
+            <div id="sessionResults" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>5. Cookie Management Test</h3>
+            <button class="btn" onclick="testCookieManagement()">Test Cookies</button>
+            <div id="cookieResults" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>6. Quick Actions</h3>
+            <a href="/auth" class="btn">Go to Login Page</a>
+            <a href="/" class="btn">Go to Home Page</a>
+            <button class="btn btn-danger" onclick="forceLogout()">Force Logout</button>
+            <button class="btn btn-warning" onclick="clearAllData()">Clear All Data</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>7. Complete Diagnostic</h3>
+            <button class="btn btn-success" onclick="runCompleteDiagnostic()">Run Complete Diagnostic</button>
+            <div id="diagnosticResults" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = window.location.origin;
+        
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.className = `result ${type}`;
+            element.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+        }
+        
+        function updateStatusCard(cardId, status, message) {
+            const card = document.getElementById(cardId);
+            card.className = `status-card ${status}`;
+            card.querySelector('p').textContent = message;
+        }
+        
+        async function runHealthCheck() {
+            try {
+                log('healthResults', 'Running health check...', 'info');
+                
+                // Test server response
+                const response = await fetch('/');
+                if (response.ok) {
+                    log('healthResults', '✅ Server is responding to main page', 'success');
+                    updateStatusCard('serverStatus', 'success', 'Online');
+                } else {
+                    log('healthResults', `⚠️ Server responded with status: ${response.status}`, 'warning');
+                    updateStatusCard('serverStatus', 'warning', `Status: ${response.status}`);
+                }
+                
+                // Test API response
+                const apiResponse = await fetch('/api/auth/providers');
+                if (apiResponse.ok) {
+                    log('healthResults', '✅ API endpoints are responding', 'success');
+                    updateStatusCard('nextAuthStatus', 'success', 'Working');
+                } else {
+                    log('healthResults', `❌ API endpoints failed: ${apiResponse.status}`, 'error');
+                    updateStatusCard('nextAuthStatus', 'error', `Failed: ${apiResponse.status}`);
+                }
+                
+            } catch (error) {
+                log('healthResults', `❌ Health check failed: ${error.message}`, 'error');
+                updateStatusCard('serverStatus', 'error', 'Offline');
+            }
+        }
+        
+        async function testNextAuthEndpoints() {
+            try {
+                log('nextAuthResults', 'Testing NextAuth endpoints...', 'info');
+                
+                const endpoints = [
+                    '/api/auth/providers',
+                    '/api/auth/csrf',
+                    '/api/auth/session',
+                    '/api/auth/signout'
+                ];
+                
+                for (const endpoint of endpoints) {
+                    try {
+                        const method = endpoint.includes('signout') ? 'POST' : 'GET';
+                        const response = await fetch(endpoint, { method });
+                        
+                        if (response.ok) {
+                            log('nextAuthResults', `✅ ${endpoint}: ${response.status} OK`, 'success');
+                        } else {
+                            log('nextAuthResults', `⚠️ ${endpoint}: ${response.status} ${response.statusText}`, 'warning');
+                        }
+                        
+                        // Test CSRF specifically
+                        if (endpoint.includes('csrf')) {
+                            const csrfData = await response.json();
+                            if (csrfData.csrfToken) {
+                                log('nextAuthResults', `✅ CSRF token received: ${csrfData.csrfToken.substring(0, 20)}...`, 'success');
+                                updateStatusCard('csrfStatus', 'success', 'Working');
+                            } else {
+                                log('nextAuthResults', `❌ CSRF token missing`, 'error');
+                                updateStatusCard('csrfStatus', 'error', 'No Token');
+                            }
+                        }
+                        
+                    } catch (error) {
+                        log('nextAuthResults', `❌ ${endpoint}: ${error.message}`, 'error');
+                    }
+                }
+                
+            } catch (error) {
+                log('nextAuthResults', `❌ NextAuth test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testAuthFlow() {
+            try {
+                log('authFlowResults', 'Testing authentication flow...', 'info');
+                
+                // Test session endpoint
+                const sessionResponse = await fetch('/api/auth/session');
+                const sessionData = await sessionResponse.json();
+                
+                if (sessionData.user) {
+                    log('authFlowResults', `✅ User is logged in:\nEmail: ${sessionData.user.email}\nRole: ${sessionData.user.role}`, 'success');
+                    updateStatusCard('sessionStatus', 'success', 'Logged In');
+                } else {
+                    log('authFlowResults', '❌ No active session found', 'warning');
+                    updateStatusCard('sessionStatus', 'warning', 'No Session');
+                }
+                
+                // Test providers
+                const providersResponse = await fetch('/api/auth/providers');
+                const providersData = await providersResponse.json();
+                
+                if (providersData.discord) {
+                    log('authFlowResults', '✅ Discord provider is configured', 'success');
+                } else {
+                    log('authFlowResults', '❌ Discord provider is missing', 'error');
+                }
+                
+                if (providersData.credentials) {
+                    log('authFlowResults', '✅ Credentials provider is configured', 'success');
+                } else {
+                    log('authFlowResults', '❌ Credentials provider is missing', 'error');
+                }
+                
+            } catch (error) {
+                log('authFlowResults', `❌ Auth flow test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testSessionManagement() {
+            try {
+                log('sessionResults', 'Testing session management...', 'info');
+                
+                // Test current session
+                const sessionResponse = await fetch('/api/auth/session');
+                const sessionData = await sessionResponse.json();
+                
+                log('sessionResults', `Current session: ${JSON.stringify(sessionData, null, 2)}`, 'info');
+                
+                // Test signout
+                const signoutResponse = await fetch('/api/auth/signout', { method: 'POST' });
+                
+                if (signoutResponse.ok) {
+                    log('sessionResults', '✅ Signout endpoint responded successfully', 'success');
+                    
+                    // Check if session was cleared
+                    setTimeout(async () => {
+                        const newSessionResponse = await fetch('/api/auth/session');
+                        const newSessionData = await newSessionResponse.json();
+                        
+                        if (!newSessionData.user) {
+                            log('sessionResults', '✅ Session cleared successfully', 'success');
+                        } else {
+                            log('sessionResults', '⚠️ Session still exists after signout', 'warning');
+                        }
+                    }, 1000);
+                    
+                } else {
+                    log('sessionResults', `❌ Signout failed: ${signoutResponse.status}`, 'error');
+                }
+                
+            } catch (error) {
+                log('sessionResults', `❌ Session test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function testCookieManagement() {
+            try {
+                log('cookieResults', 'Testing cookie management...', 'info');
+                
+                // Check current cookies
+                const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+                    const [key, value] = cookie.trim().split('=');
+                    acc[key] = value;
+                    return acc;
+                }, {});
+                
+                const nextAuthCookies = Object.keys(cookies).filter(key => 
+                    key.includes('next-auth') || key.includes('session') || key.includes('csrf')
+                );
+                
+                if (nextAuthCookies.length > 0) {
+                    log('cookieResults', `Found NextAuth cookies: ${nextAuthCookies.join(', ')}`, 'info');
+                } else {
+                    log('cookieResults', 'No NextAuth cookies found', 'warning');
+                }
+                
+                // Check localStorage
+                const localKeys = Object.keys(localStorage);
+                const sessionKeys = Object.keys(sessionStorage);
+                
+                log('cookieResults', `LocalStorage keys: ${localKeys.length > 0 ? localKeys.join(', ') : 'None'}`, 'info');
+                log('cookieResults', `SessionStorage keys: ${sessionKeys.length > 0 ? sessionKeys.join(', ') : 'None'}`, 'info');
+                
+            } catch (error) {
+                log('cookieResults', `❌ Cookie test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function forceLogout() {
+            try {
+                log('diagnosticResults', 'Force logout initiated...', 'info');
+                
+                // Clear all storage
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                // Clear cookies
+                document.cookie.split(";").forEach(function(c) { 
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                });
+                
+                log('diagnosticResults', '✅ All data cleared, redirecting to auth page...', 'success');
+                
+                // Redirect to auth page
+                setTimeout(() => {
+                    window.location.href = '/auth';
+                }, 1000);
+                
+            } catch (error) {
+                log('diagnosticResults', `❌ Force logout failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function clearAllData() {
+            try {
+                log('diagnosticResults', 'Clearing all data...', 'info');
+                
+                // Clear storage
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                // Clear cookies
+                document.cookie.split(";").forEach(function(c) { 
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                });
+                
+                log('diagnosticResults', '✅ All data cleared', 'success');
+                
+                // Reload page
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+                
+            } catch (error) {
+                log('diagnosticResults', `❌ Clear data failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function runCompleteDiagnostic() {
+            try {
+                log('diagnosticResults', 'Running complete diagnostic...', 'info');
+                
+                let results = [];
+                
+                // Server check
+                try {
+                    const healthResponse = await fetch('/');
+                    results.push(`Server: ${healthResponse.ok ? '✅ Online' : '⚠️ Responding with errors'}`);
+                } catch (error) {
+                    results.push(`Server: ❌ Offline - ${error.message}`);
+                }
+                
+                // NextAuth check
+                try {
+                    const authResponse = await fetch('/api/auth/providers');
+                    results.push(`NextAuth: ${authResponse.ok ? '✅ Working' : '❌ Failed'}`);
+                } catch (error) {
+                    results.push(`NextAuth: ❌ Error - ${error.message}`);
+                }
+                
+                // Session check
+                try {
+                    const sessionResponse = await fetch('/api/auth/session');
+                    const sessionData = await sessionResponse.json();
+                    results.push(`Session: ${sessionData.user ? '✅ Active' : '❌ None'}`);
+                } catch (error) {
+                    results.push(`Session: ❌ Error - ${error.message}`);
+                }
+                
+                // CSRF check
+                try {
+                    const csrfResponse = await fetch('/api/auth/csrf');
+                    const csrfData = await csrfResponse.json();
+                    results.push(`CSRF: ${csrfData.csrfToken ? '✅ Token received' : '❌ No token'}`);
+                } catch (error) {
+                    results.push(`CSRF: ❌ Error - ${error.message}`);
+                }
+                
+                // Environment check
+                const isHttps = window.location.protocol === 'https:';
+                const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                results.push(`Environment: ${isHttps ? '🔒 HTTPS' : '⚠️ HTTP'} ${isLocalhost ? '(Local)' : '(Production)'}`);
+                
+                // Cookies check
+                const cookies = document.cookie.split(';').filter(c => c.trim().includes('next-auth'));
+                results.push(`NextAuth Cookies: ${cookies.length > 0 ? '✅ Found' : '❌ Missing'}`);
+                
+                log('diagnosticResults', results.join('\n'), 'info');
+                
+            } catch (error) {
+                log('diagnosticResults', `❌ Diagnostic failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Auto-run basic checks when page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                runHealthCheck();
+                testNextAuthEndpoints();
+                testAuthFlow();
+                testCookieManagement();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Test - Gear Score</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .btn-danger {
+            background: #dc3545;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        .btn-success {
+            background: #28a745;
+        }
+        .btn-success:hover {
+            background: #218838;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status.online { background: #28a745; color: white; }
+        .status.offline { background: #dc3545; color: white; }
+        .status.error { background: #ffc107; color: black; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Authentication Test - Gear Score</h1>
+        <p>This page helps you test the authentication system and identify any issues.</p>
+        
+        <div class="test-section">
+            <h3>1. Server Status Check</h3>
+            <button class="btn" onclick="checkServerStatus()">Check Server Status</button>
+            <div id="serverStatus" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. Session Check</h3>
+            <button class="btn" onclick="checkSession()">Check Current Session</button>
+            <button class="btn btn-danger" onclick="clearSession()">Clear Session</button>
+            <div id="sessionStatus" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. Authentication Test</h3>
+            <button class="btn btn-success" onclick="testAuth()">Test Authentication</button>
+            <button class="btn" onclick="testDiscordAuth()">Test Discord Auth</button>
+            <div id="authStatus" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>4. API Endpoints Test</h3>
+            <button class="btn" onclick="testAPIEndpoints()">Test API Endpoints</button>
+            <div id="apiStatus" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>5. Browser Storage Check</h3>
+            <button class="btn" onclick="checkBrowserStorage()">Check Browser Storage</button>
+            <div id="storageStatus" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>6. Quick Actions</h3>
+            <a href="/auth" class="btn">Go to Login Page</a>
+            <a href="/" class="btn">Go to Home Page</a>
+            <button class="btn btn-danger" onclick="forceLogout()">Force Logout</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>7. Diagnostic Results</h3>
+            <button class="btn" onclick="runFullDiagnostic()">Run Full Diagnostic</button>
+            <div id="diagnosticResults" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = window.location.origin;
+        
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.className = `result ${type}`;
+            element.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+        }
+        
+        async function checkServerStatus() {
+            try {
+                log('serverStatus', 'Checking server status...', 'info');
+                
+                const response = await fetch('/health', { method: 'GET' });
+                if (response.ok) {
+                    log('serverStatus', '✅ Server is online and responding', 'success');
+                } else {
+                    log('serverStatus', `⚠️ Server responded with status: ${response.status}`, 'warning');
+                }
+            } catch (error) {
+                log('serverStatus', `❌ Server check failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function checkSession() {
+            try {
+                log('sessionStatus', 'Checking current session...', 'info');
+                
+                const response = await fetch('/api/auth/session', {
+                    method: 'GET',
+                    credentials: 'same-origin'
+                });
+                
+                const sessionData = await response.json();
+                
+                if (sessionData.user) {
+                    log('sessionStatus', `✅ User is logged in:\nEmail: ${sessionData.user.email}\nRole: ${sessionData.user.role}\nID: ${sessionData.user.id}`, 'success');
+                } else {
+                    log('sessionStatus', '❌ No active session found', 'warning');
+                }
+            } catch (error) {
+                log('sessionStatus', `❌ Session check failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function clearSession() {
+            try {
+                // Clear localStorage
+                localStorage.clear();
+                
+                // Clear sessionStorage
+                sessionStorage.clear();
+                
+                // Clear cookies
+                document.cookie.split(";").forEach(function(c) { 
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                });
+                
+                log('sessionStatus', '✅ Session data cleared from browser', 'success');
+                
+                // Reload page to ensure clean state
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } catch (error) {
+                log('sessionStatus', `❌ Failed to clear session: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testAuth() {
+            try {
+                log('authStatus', 'Testing authentication endpoints...', 'info');
+                
+                // Test session endpoint
+                const sessionResponse = await fetch('/api/auth/session', {
+                    method: 'GET',
+                    credentials: 'same-origin'
+                });
+                
+                if (sessionResponse.ok) {
+                    log('authStatus', '✅ Session endpoint is working', 'success');
+                } else {
+                    log('authStatus', `❌ Session endpoint failed: ${sessionResponse.status}`, 'error');
+                }
+                
+                // Test protected endpoint
+                const protectedResponse = await fetch('/api/orders', {
+                    method: 'GET',
+                    credentials: 'same-origin'
+                });
+                
+                if (protectedResponse.status === 401) {
+                    log('authStatus', '✅ Protected endpoint correctly requires authentication', 'success');
+                } else if (protectedResponse.ok) {
+                    log('authStatus', '✅ Protected endpoint accessible (user is authenticated)', 'success');
+                } else {
+                    log('authStatus', `⚠️ Protected endpoint unexpected response: ${protectedResponse.status}`, 'warning');
+                }
+                
+            } catch (error) {
+                log('authStatus', `❌ Authentication test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testDiscordAuth() {
+            try {
+                log('authStatus', 'Testing Discord OAuth configuration...', 'info');
+                
+                // Check if we can access the Discord callback URL
+                const discordResponse = await fetch('/api/auth/callback/discord', {
+                    method: 'GET',
+                    credentials: 'same-origin'
+                });
+                
+                if (discordResponse.status === 405) {
+                    log('authStatus', '✅ Discord callback endpoint exists (Method Not Allowed is expected)', 'success');
+                } else if (discordResponse.status === 404) {
+                    log('authStatus', '❌ Discord callback endpoint not found', 'error');
+                } else {
+                    log('authStatus', `⚠️ Discord callback endpoint responded with: ${discordResponse.status}`, 'warning');
+                }
+                
+            } catch (error) {
+                log('authStatus', `❌ Discord OAuth test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testAPIEndpoints() {
+            try {
+                log('apiStatus', 'Testing API endpoints...', 'info');
+                
+                const endpoints = [
+                    '/api/auth/session',
+                    '/api/auth/providers',
+                    '/api/orders',
+                    '/health'
+                ];
+                
+                for (const endpoint of endpoints) {
+                    try {
+                        const response = await fetch(endpoint, {
+                            method: 'GET',
+                            credentials: 'same-origin'
+                        });
+                        
+                        log('apiStatus', `${endpoint}: ${response.status} ${response.statusText}`, 
+                            response.ok ? 'success' : response.status === 401 ? 'warning' : 'error');
+                    } catch (error) {
+                        log('apiStatus', `${endpoint}: ❌ ${error.message}`, 'error');
+                    }
+                }
+                
+            } catch (error) {
+                log('apiStatus', `❌ API test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function checkBrowserStorage() {
+            try {
+                log('storageStatus', 'Checking browser storage...', 'info');
+                
+                // Check localStorage
+                const localKeys = Object.keys(localStorage);
+                log('storageStatus', `LocalStorage keys: ${localKeys.length > 0 ? localKeys.join(', ') : 'None'}`, 'info');
+                
+                // Check sessionStorage
+                const sessionKeys = Object.keys(sessionStorage);
+                log('storageStatus', `SessionStorage keys: ${sessionKeys.length > 0 ? sessionKeys.join(', ') : 'None'}`, 'info');
+                
+                // Check cookies
+                const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+                    const [key, value] = cookie.trim().split('=');
+                    acc[key] = value;
+                    return acc;
+                }, {});
+                
+                const sessionCookies = Object.keys(cookies).filter(key => 
+                    key.includes('session') || key.includes('auth') || key.includes('next-auth')
+                );
+                
+                log('storageStatus', `Session cookies: ${sessionCookies.length > 0 ? sessionCookies.join(', ') : 'None'}`, 'info');
+                
+            } catch (error) {
+                log('storageStatus', `❌ Storage check failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function forceLogout() {
+            try {
+                // Clear all storage
+                clearSession();
+                
+                // Redirect to auth page
+                window.location.href = '/auth';
+            } catch (error) {
+                log('authStatus', `❌ Force logout failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function runFullDiagnostic() {
+            try {
+                log('diagnosticResults', 'Running full diagnostic...', 'info');
+                
+                let results = [];
+                
+                // Check server
+                try {
+                    const healthResponse = await fetch('/health');
+                    results.push(`Server: ${healthResponse.ok ? '✅ Online' : '⚠️ Responding with errors'}`);
+                } catch (error) {
+                    results.push(`Server: ❌ Offline - ${error.message}`);
+                }
+                
+                // Check session
+                try {
+                    const sessionResponse = await fetch('/api/auth/session');
+                    const sessionData = await sessionResponse.json();
+                    results.push(`Session: ${sessionData.user ? '✅ Active' : '❌ None'}`);
+                } catch (error) {
+                    results.push(`Session: ❌ Error - ${error.message}`);
+                }
+                
+                // Check environment
+                const isHttps = window.location.protocol === 'https:';
+                const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                results.push(`Environment: ${isHttps ? '🔒 HTTPS' : '⚠️ HTTP'} ${isLocalhost ? '(Local)' : '(Production)'}`);
+                
+                // Check cookies
+                const cookies = document.cookie.split(';').filter(c => c.trim().includes('next-auth'));
+                results.push(`NextAuth Cookies: ${cookies.length > 0 ? '✅ Found' : '❌ Missing'}`);
+                
+                log('diagnosticResults', results.join('\n'), 'info');
+                
+            } catch (error) {
+                log('diagnosticResults', `❌ Diagnostic failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Auto-run basic checks when page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                checkServerStatus();
+                checkSession();
+                checkBrowserStorage();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Payment</title>
+</head>
+<body>
+    <h1>Test Coinbase Payment</h1>
+    <button id="testPayment">Test Payment</button>
+    
+    <script>
+        document.getElementById('testPayment').addEventListener('click', async () => {
+            console.log('Testing payment...');
+            
+            try {
+                const paymentData = {
+                    amount: 10.00,
+                    currency: 'USD',
+                    game: 'War Thunder',
+                    service: 'Test Service',
+                    paymentMethod: 'coinbase'
+                };
+                
+                console.log('Sending payment data:', paymentData);
+                
+                const response = await fetch('/api/pay/coinbase/create-payment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(paymentData),
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response ok:', response.ok);
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('Payment error:', errorData);
+                    alert('Payment failed: ' + (errorData.error || 'Unknown error'));
+                    return;
+                }
+                
+                const result = await response.json();
+                console.log('Payment result:', result);
+                
+                if (result.paymentUrl) {
+                    console.log('Redirecting to:', result.paymentUrl);
+                    window.location.href = result.paymentUrl;
+                } else {
+                    console.error('No payment URL in response');
+                    alert('No payment URL received');
+                }
+                
+            } catch (error) {
+                console.error('Payment error:', error);
+                alert('Payment failed: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>

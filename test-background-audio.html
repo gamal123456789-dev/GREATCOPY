@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اختبار الأصوات في الخلفية</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+            text-align: center;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            background: #333;
+            border-radius: 5px;
+        }
+        .instructions {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <h1>اختبار تشغيل الأصوات في الخلفية</h1>
+    
+    <div class="instructions">
+        <h3>تعليمات الاختبار:</h3>
+        <ol>
+            <li>اضغط على "تفعيل الصوت" أولاً</li>
+            <li>اضغط على "تشغيل صوت الإشعار"</li>
+            <li>انتقل إلى تبويب آخر في المتصفح</li>
+            <li>ارجع لهذا التبويب واضغط على "تشغيل صوت في الخلفية"</li>
+            <li>انتقل مرة أخرى إلى تبويب آخر</li>
+            <li>يجب أن تسمع الصوت حتى وأنت في التبويب الآخر</li>
+        </ol>
+    </div>
+
+    <div class="status" id="status">
+        الحالة: في انتظار تفعيل الصوت
+    </div>
+
+    <button onclick="enableAudio()">تفعيل الصوت</button>
+    <button onclick="playNotificationSound()">تشغيل صوت الإشعار</button>
+    <button onclick="testBackgroundSound()">تشغيل صوت في الخلفية</button>
+    <button onclick="testChatSound()">تشغيل صوت المحادثة</button>
+
+    <script>
+        let audioContext = null;
+        let audioEnabled = false;
+
+        function updateStatus(message) {
+            document.getElementById('status').textContent = 'الحالة: ' + message;
+            console.log('🔊 Status:', message);
+        }
+
+        async function enableAudio() {
+            try {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContextClass) {
+                    updateStatus('المتصفح لا يدعم Web Audio API');
+                    return;
+                }
+
+                if (!audioContext) {
+                    audioContext = new AudioContextClass();
+                }
+
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+
+                audioEnabled = true;
+                updateStatus('تم تفعيل الصوت بنجاح');
+                console.log('✅ Audio enabled successfully');
+            } catch (error) {
+                updateStatus('فشل في تفعيل الصوت: ' + error.message);
+                console.error('❌ Failed to enable audio:', error);
+            }
+        }
+
+        async function playAudio(audioPath, description) {
+            try {
+                updateStatus('جاري تشغيل ' + description + '...');
+                
+                // Resume audio context if suspended
+                if (audioContext && audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                    console.log('🎵 Audio context resumed');
+                }
+
+                const audio = new Audio(audioPath);
+                audio.volume = 0.3;
+                audio.preload = 'auto';
+                
+                const playPromise = audio.play();
+                if (playPromise) {
+                    await playPromise;
+                    updateStatus('تم تشغيل ' + description + ' بنجاح');
+                    console.log('✅ Audio played successfully:', audioPath);
+                } else {
+                    updateStatus('تم تشغيل ' + description + ' (متصفح قديم)');
+                }
+            } catch (error) {
+                updateStatus('فشل في تشغيل ' + description + ': ' + error.message);
+                console.error('❌ Failed to play audio:', error);
+            }
+        }
+
+        function playNotificationSound() {
+            playAudio('/notification-Sound.mp3', 'صوت الإشعار');
+        }
+
+        function testChatSound() {
+            playAudio('/chat-sound.mp3', 'صوت المحادثة');
+        }
+
+        function testBackgroundSound() {
+            updateStatus('اختبار الصوت في الخلفية - انتقل إلى تبويب آخر الآن');
+            
+            setTimeout(() => {
+                console.log('🔊 Playing background sound...');
+                playAudio('/notification-Sound.mp3', 'صوت الخلفية');
+            }, 3000);
+        }
+
+        // Handle visibility change
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                console.log('📱 Tab hidden - audio should still work');
+            } else {
+                console.log('📱 Tab visible - resuming if needed');
+                if (audioContext && audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+            }
+        });
+
+        // Auto-enable audio on first interaction
+        document.addEventListener('click', enableAudio, { once: true });
+    </script>
+</body>
+</html>

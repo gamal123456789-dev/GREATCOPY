@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Auth Test - Gear Score</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .btn-success {
+            background: #28a745;
+        }
+        .btn-danger {
+            background: #dc3545;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-weight: bold;
+            margin: 5px;
+        }
+        .status.online {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.offline {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Simple Authentication Test - Gear Score</h1>
+        <p>اختبار بسيط للمصادقة للتأكد من أن كل شيء يعمل بشكل صحيح.</p>
+        
+        <div class="test-section">
+            <h3>🔍 اختبار حالة الخادم</h3>
+            <button class="btn" onclick="testServer()">اختبار الخادم</button>
+            <div id="serverResult" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔐 اختبار NextAuth</h3>
+            <button class="btn" onclick="testNextAuth()">اختبار NextAuth</button>
+            <div id="nextAuthResult" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🍪 اختبار الكوكيز</h3>
+            <button class="btn" onclick="testCookies()">اختبار الكوكيز</button>
+            <div id="cookiesResult" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🚪 اختبار تسجيل الدخول</h3>
+            <a href="/auth" class="btn btn-success">اذهب لصفحة تسجيل الدخول</a>
+            <button class="btn btn-danger" onclick="testSignout()">اختبار تسجيل الخروج</button>
+            <div id="authResult" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📊 الحالة العامة</h3>
+            <div id="overallStatus"></div>
+        </div>
+    </div>
+
+    <script>
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.className = `result ${type}`;
+            element.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+        }
+        
+        function updateStatus(status, message) {
+            const statusDiv = document.getElementById('overallStatus');
+            statusDiv.innerHTML = `<span class="status ${status}">${message}</span>`;
+        }
+        
+        async function testServer() {
+            try {
+                log('serverResult', 'اختبار الخادم...', 'info');
+                
+                const response = await fetch('/');
+                if (response.ok) {
+                    log('serverResult', '✅ الخادم يعمل بشكل صحيح', 'success');
+                    updateStatus('online', 'الخادم يعمل');
+                } else {
+                    log('serverResult', `⚠️ الخادم يستجيب مع أخطاء: ${response.status}`, 'error');
+                    updateStatus('offline', 'مشاكل في الخادم');
+                }
+                
+            } catch (error) {
+                log('serverResult', `❌ فشل في اختبار الخادم: ${error.message}`, 'error');
+                updateStatus('offline', 'الخادم غير متصل');
+            }
+        }
+        
+        async function testNextAuth() {
+            try {
+                log('nextAuthResult', 'اختبار NextAuth...', 'info');
+                
+                // Test providers
+                const providersResponse = await fetch('/api/auth/providers');
+                if (providersResponse.ok) {
+                    const providers = await providersResponse.json();
+                    log('nextAuthResult', `✅ مزودي المصادقة:\n${JSON.stringify(providers, null, 2)}`, 'success');
+                } else {
+                    log('nextAuthResult', `❌ فشل في مزودي المصادقة: ${providersResponse.status}`, 'error');
+                }
+                
+                // Test CSRF
+                const csrfResponse = await fetch('/api/auth/csrf');
+                if (csrfResponse.ok) {
+                    const csrf = await csrfResponse.json();
+                    log('nextAuthResult', `✅ CSRF Token: ${csrf.csrfToken.substring(0, 20)}...`, 'success');
+                } else {
+                    log('nextAuthResult', `❌ فشل في CSRF: ${csrfResponse.status}`, 'error');
+                }
+                
+                // Test session
+                const sessionResponse = await fetch('/api/auth/session');
+                if (sessionResponse.ok) {
+                    const session = await sessionResponse.json();
+                    log('nextAuthResult', `✅ Session: ${JSON.stringify(session, null, 2)}`, 'success');
+                } else {
+                    log('nextAuthResult', `❌ فشل في Session: ${sessionResponse.status}`, 'error');
+                }
+                
+            } catch (error) {
+                log('nextAuthResult', `❌ فشل في اختبار NextAuth: ${error.message}`, 'error');
+            }
+        }
+        
+        function testCookies() {
+            try {
+                log('cookiesResult', 'اختبار الكوكيز...', 'info');
+                
+                const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+                    const [key, value] = cookie.trim().split('=');
+                    acc[key] = value;
+                    return acc;
+                }, {});
+                
+                const nextAuthCookies = Object.keys(cookies).filter(key => 
+                    key.includes('next-auth') || key.includes('session') || key.includes('csrf')
+                );
+                
+                if (nextAuthCookies.length > 0) {
+                    log('cookiesResult', `✅ تم العثور على NextAuth cookies:\n${nextAuthCookies.join('\n')}`, 'success');
+                } else {
+                    log('cookiesResult', '⚠️ لم يتم العثور على NextAuth cookies', 'info');
+                }
+                
+                // Check localStorage
+                const localKeys = Object.keys(localStorage);
+                const sessionKeys = Object.keys(sessionStorage);
+                
+                log('cookiesResult', `LocalStorage: ${localKeys.length > 0 ? localKeys.join(', ') : 'فارغ'}`, 'info');
+                log('cookiesResult', `SessionStorage: ${sessionKeys.length > 0 ? sessionKeys.join(', ') : 'فارغ'}`, 'info');
+                
+            } catch (error) {
+                log('cookiesResult', `❌ فشل في اختبار الكوكيز: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testSignout() {
+            try {
+                log('authResult', 'اختبار تسجيل الخروج...', 'info');
+                
+                const response = await fetch('/api/auth/signout', { method: 'POST' });
+                
+                if (response.ok) {
+                    log('authResult', '✅ تسجيل الخروج يعمل بشكل صحيح', 'success');
+                    
+                    // Check if session was cleared
+                    setTimeout(async () => {
+                        const sessionResponse = await fetch('/api/auth/session');
+                        const session = await sessionResponse.json();
+                        
+                        if (!session.user) {
+                            log('authResult', '✅ تم مسح الجلسة بنجاح', 'success');
+                        } else {
+                            log('authResult', '⚠️ الجلسة لا تزال موجودة بعد تسجيل الخروج', 'error');
+                        }
+                    }, 1000);
+                    
+                } else {
+                    log('authResult', `❌ فشل في تسجيل الخروج: ${response.status}`, 'error');
+                }
+                
+            } catch (error) {
+                log('authResult', `❌ فشل في اختبار تسجيل الخروج: ${error.message}`, 'error');
+            }
+        }
+        
+        // Auto-run basic tests when page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                testServer();
+                testNextAuth();
+                testCookies();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
