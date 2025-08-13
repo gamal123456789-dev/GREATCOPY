@@ -197,3 +197,4 @@ This project is licensed under the MIT License - see the `LICENSE` file for deta
 **Made with ❤️ for the Arabic gaming community**
 
 *Last updated: January 2025*"# Gear-scorebetter" 
+# GREATCOPY
