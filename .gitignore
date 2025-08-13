@@ -45,3 +45,23 @@ certs/
 .DS_Store
 Thumbs.db
 .git-credentials
+
+# Cache directories
+.cache/
+.cache/**
+puppeteer/
+.npm/
+.yarn/
+
+# Large binary files
+*.exe
+*.dmg
+*.pkg
+*.deb
+*.rpm
+
+# Puppeteer Chrome binaries (large files)
+.cache/puppeteer/
+.cache/puppeteer/**
+chrome-linux64/
+chrome-headless-shell-linux64/
