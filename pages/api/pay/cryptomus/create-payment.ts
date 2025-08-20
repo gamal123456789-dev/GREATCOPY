@@ -2,6 +2,9 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../auth/[...nextauth]';
 import crypto from 'crypto';
+import prisma from '../../../../lib/prisma';
+import { createInvoice } from '../../../../lib/invoiceService';
+const { emitToUser, emitToAdmin } = require('../../../../lib/socket-cjs');
 
 /**
  * Cryptomus Payment Creation API
@@ -79,10 +82,10 @@ export default async function handler(
       amount: numAmount.toString(),
       currency: currency,
       order_id: orderId,
-      url_return: `${process.env.NEXTAUTH_URL || 'http://localhost:5200'}/pay/success?orderId=${orderId}&game=${encodeURIComponent(game)}&service=${encodeURIComponent(service)}&serviceDetails=${encodeURIComponent(serviceDetails || service)}&amount=${numAmount}`,
-      url_callback: `${process.env.NEXTAUTH_URL || 'http://localhost:5200'}/api/pay/cryptomus/webhook`,
-      url_success: `${process.env.NEXTAUTH_URL || 'http://localhost:5200'}/pay/success?orderId=${orderId}`,
-      url_cancel: `${process.env.NEXTAUTH_URL || 'http://localhost:5200'}/pay/failed?orderId=${orderId}`,
+      url_return: `${process.env.NEXTAUTH_URL || 'http://localhost:5201'}/pay/success?orderId=${orderId}&game=${encodeURIComponent(game)}&service=${encodeURIComponent(service)}&serviceDetails=${encodeURIComponent(serviceDetails || service)}&amount=${numAmount}`,
+      url_callback: `${process.env.NEXTAUTH_URL || 'http://localhost:5201'}/api/pay/cryptomus/webhook`,
+      url_success: `${process.env.NEXTAUTH_URL || 'http://localhost:5201'}/pay/success?orderId=${orderId}&game=${encodeURIComponent(game)}&service=${encodeURIComponent(service)}&serviceDetails=${encodeURIComponent(serviceDetails || service)}&amount=${numAmount}&currency=${currency}`,
+      url_cancel: `${process.env.NEXTAUTH_URL || 'http://localhost:5201'}/pay/failed?orderId=${orderId}`,
       is_payment_multiple: false,
       lifetime: 7200, // 2 hours
       to_currency: 'USDT', // Default to USDT
@@ -150,6 +153,51 @@ export default async function handler(
       });
     }
 
+    // Store payment session data for webhook processing
+    console.log('Payment created successfully. Order will be created after payment confirmation.');
+    
+    // Store payment metadata in a temporary collection for webhook processing
+    try {
+      // We'll create a payment session record to store the order details
+      // This will be used by the webhook to create the order after payment confirmation
+      await (prisma as any).paymentSession.upsert({
+        where: { orderId: orderId },
+        update: {
+          userId: session.user.id,
+          customerEmail: session.user.email || '',
+          game: game,
+          service: service,
+          serviceDetails: serviceDetails || service,
+          amount: numAmount,
+          currency: currency,
+          paymentProvider: 'Cryptomus',
+          paymentId: cryptomusResult.result.uuid,
+          status: 'pending',
+          updatedAt: new Date()
+        },
+        create: {
+          orderId: orderId,
+          userId: session.user.id,
+          customerEmail: session.user.email || '',
+          game: game,
+          service: service,
+          serviceDetails: serviceDetails || service,
+          amount: numAmount,
+          currency: currency,
+          paymentProvider: 'Cryptomus',
+          paymentId: cryptomusResult.result.uuid,
+          status: 'pending',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      });
+      
+      console.log('Payment session stored successfully:', orderId);
+    } catch (sessionError) {
+      console.error('Error storing payment session:', sessionError);
+      // Continue with payment creation even if session storage fails
+    }
+
     // Return payment URL to frontend
     res.status(200).json({
       success: true,
@@ -157,7 +205,8 @@ export default async function handler(
       orderId,
       invoiceId: cryptomusResult.result.uuid,
       amount: numAmount,
-      currency
+      currency,
+      message: 'Payment link created successfully. Your order will be created after payment confirmation.'
     });
 
   } catch (error) {

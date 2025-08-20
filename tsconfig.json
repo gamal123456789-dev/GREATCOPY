@@ -1,28 +1,34 @@
 {
   "compilerOptions": {
-    "target": "ESNext", // Make sure `target` is ESNext
-    "module": "ESNext", // Make sure `module` is ESNext
-    "moduleResolution": "node", // Specify module resolution method
-    "esModuleInterop": true, // Enable interop between ES Modules and CommonJS
-    "allowSyntheticDefaultImports": true,
-    "jsx": "preserve", // Make sure JSX is configured correctly
-    "strict": true, // Enable strict type checking
-    "noEmit": true, // Do not emit JS files
-    "skipLibCheck": true,
-    "lib": [
-      "dom",
-      "esnext"
-    ] // Make sure libraries are configured correctly
-    ,
+    "target": "es2015",
+    "lib": ["dom", "dom.iterable", "es6"],
     "allowJs": true,
-    "incremental": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "node",
     "resolveJsonModule": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    }
   },
   "include": [
-    "next-env.d.ts", // Add Next.js type definitions
+    "next-env.d.ts",
     "**/*.ts",
-    "**/*.tsx"
+    "**/*.tsx",
+    ".next/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

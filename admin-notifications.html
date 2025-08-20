@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام إشعارات الإدارة - Gear Score</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #e74c3c;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-indicator.connected {
+            background: #27ae60;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .controls {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .sound-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .sound-toggle {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            background: #ccc;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .sound-toggle.active {
+            background: #27ae60;
+        }
+        
+        .sound-toggle::after {
+            content: '';
+            position: absolute;
+            width: 26px;
+            height: 26px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.3s;
+        }
+        
+        .sound-toggle.active::after {
+            transform: translateX(30px);
+        }
+        
+        .stats {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        .orders-container {
+            padding: 30px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .order-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+            animation: slideIn 0.5s ease;
+        }
+        
+        .order-card.new {
+            border-left: 5px solid #27ae60;
+            background: linear-gradient(90deg, #d4edda 0%, white 10%);
+        }
+        
+        .order-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .order-id {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .order-time {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .order-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .detail-label {
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+        
+        .detail-value {
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        
+        .no-orders {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+        
+        .no-orders i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+        
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+        
+        .test-button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔔 نظام إشعارات الإدارة</h1>
+            <p>مراقبة الطلبات الجديدة في الوقت الفعلي</p>
+            <div class="status">
+                <div class="status-indicator" id="statusIndicator"></div>
+                <span id="statusText">جاري الاتصال...</span>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="sound-control">
+                <span>🔊 الصوت:</span>
+                <div class="sound-toggle active" id="soundToggle"></div>
+            </div>
+            
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-number" id="totalOrders">0</div>
+                    <div class="stat-label">إجمالي الطلبات</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="newOrders">0</div>
+                    <div class="stat-label">طلبات جديدة</div>
+                </div>
+            </div>
+            
+            <button class="test-button" id="testButton">اختبار الصوت</button>
+        </div>
+        
+        <div class="orders-container" id="ordersContainer">
+            <div class="no-orders">
+                <i>📦</i>
+                <h3>لا توجد طلبات جديدة</h3>
+                <p>سيتم عرض الطلبات الجديدة هنا تلقائياً</p>
+            </div>
+        </div>
+    </div>
+    
+    <audio id="notificationSound" preload="auto">
+        <source src="/sounds/notification.mp3" type="audio/mpeg">
+        <source src="/sounds/notification.wav" type="audio/wav">
+        <source src="/chat-sound.mp3" type="audio/mpeg">
+    </audio>
+    
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        class AdminNotificationSystem {
+            constructor() {
+                this.socket = null;
+                this.soundEnabled = true;
+                this.orders = [];
+                this.totalOrders = 0;
+                this.newOrders = 0;
+                
+                this.initializeElements();
+                this.initializeSocket();
+                this.bindEvents();
+            }
+            
+            initializeElements() {
+                this.statusIndicator = document.getElementById('statusIndicator');
+                this.statusText = document.getElementById('statusText');
+                this.soundToggle = document.getElementById('soundToggle');
+                this.ordersContainer = document.getElementById('ordersContainer');
+                this.totalOrdersEl = document.getElementById('totalOrders');
+                this.newOrdersEl = document.getElementById('newOrders');
+                this.testButton = document.getElementById('testButton');
+                this.notificationSound = document.getElementById('notificationSound');
+            }
+            
+            initializeSocket() {
+                const socketUrl = window.location.hostname === 'localhost' 
+                    ? 'http://localhost:5201' 
+                    : 'https://gear-score.com';
+                    
+                this.socket = io(socketUrl, {
+                    transports: ['websocket', 'polling']
+                });
+                
+                this.socket.on('connect', () => {
+                    console.log('متصل بالخادم');
+                    this.updateStatus(true, 'متصل');
+                    this.socket.emit('join-admin-room');
+                });
+                
+                this.socket.on('disconnect', () => {
+                    console.log('انقطع الاتصال');
+                    this.updateStatus(false, 'غير متصل');
+                });
+                
+                this.socket.on('connect_error', (error) => {
+                    console.error('خطأ في الاتصال:', error);
+                    this.updateStatus(false, 'خطأ في الاتصال');
+                });
+                
+                this.socket.on('new-order', (orderData) => {
+                    console.log('طلب جديد:', orderData);
+                    this.handleNewOrder(orderData);
+                });
+                
+                this.socket.on('admin-notification', (data) => {
+                    console.log('إشعار إداري:', data);
+                    if (data.type === 'new-order') {
+                        this.handleNewOrder(data.order);
+                    }
+                });
+            }
+            
+            updateStatus(connected, text) {
+                this.statusIndicator.className = `status-indicator ${connected ? 'connected' : ''}`;
+                this.statusText.textContent = text;
+            }
+            
+            handleNewOrder(orderData) {
+                this.playNotificationSound();
+                this.addOrderToList(orderData);
+                this.updateStats();
+            }
+            
+            playNotificationSound() {
+                if (this.soundEnabled) {
+                    this.notificationSound.currentTime = 0;
+                    this.notificationSound.play().catch(e => {
+                        console.log('لا يمكن تشغيل الصوت:', e);
+                    });
+                }
+            }
+            
+            addOrderToList(orderData) {
+                this.orders.unshift({
+                    ...orderData,
+                    timestamp: new Date(),
+                    isNew: true
+                });
+                
+                // Keep only last 50 orders
+                if (this.orders.length > 50) {
+                    this.orders = this.orders.slice(0, 50);
+                }
+                
+                this.renderOrders();
+                
+                // Remove 'new' class after 10 seconds
+                setTimeout(() => {
+                    const orderCard = document.querySelector(`[data-order-id="${orderData.id || orderData.orderId}"]`);
+                    if (orderCard) {
+                        orderCard.classList.remove('new');
+                    }
+                }, 10000);
+            }
+            
+            renderOrders() {
+                if (this.orders.length === 0) {
+                    this.ordersContainer.innerHTML = `
+                        <div class="no-orders">
+                            <i>📦</i>
+                            <h3>لا توجد طلبات جديدة</h3>
+                            <p>سيتم عرض الطلبات الجديدة هنا تلقائياً</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                this.ordersContainer.innerHTML = this.orders.map(order => `
+                    <div class="order-card ${order.isNew ? 'new' : ''}" data-order-id="${order.id || order.orderId}">
+                        <div class="order-header">
+                            <div class="order-id">طلب #${order.id || order.orderId}</div>
+                            <div class="order-time">${this.formatTime(order.timestamp)}</div>
+                        </div>
+                        <div class="order-details">
+                            <div class="detail-item">
+                                <div class="detail-label">العميل</div>
+                                <div class="detail-value">${order.customerName || order.customer || 'غير محدد'}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">اللعبة</div>
+                                <div class="detail-value">${order.game || 'غير محدد'}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">الخدمة</div>
+                                <div class="detail-value">${order.service || order.title || 'غير محدد'}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">المبلغ</div>
+                                <div class="detail-value">${order.amount || order.price || 'غير محدد'} $</div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            formatTime(date) {
+                return new Intl.DateTimeFormat('ar-SA', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    day: '2-digit',
+                    month: '2-digit'
+                }).format(date);
+            }
+            
+            updateStats() {
+                this.totalOrders = this.orders.length;
+                this.newOrders = this.orders.filter(order => order.isNew).length;
+                
+                this.totalOrdersEl.textContent = this.totalOrders;
+                this.newOrdersEl.textContent = this.newOrders;
+            }
+            
+            bindEvents() {
+                this.soundToggle.addEventListener('click', () => {
+                    this.soundEnabled = !this.soundEnabled;
+                    this.soundToggle.classList.toggle('active', this.soundEnabled);
+                });
+                
+                this.testButton.addEventListener('click', () => {
+                    this.playNotificationSound();
+                });
+            }
+        }
+        
+        // Initialize the system when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new AdminNotificationSystem();
+        });
+    </script>
+</body>
+</html>

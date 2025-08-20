@@ -39,7 +39,7 @@ export function UserProvider({ children }: UserProviderProps) {
           username: session.user.username || session.user.name || '',
           email: session.user.email || '',
           role: session.user.role || 'user',
-          isAdmin: session.user.role === 'admin',
+          isAdmin: session.user.role === 'ADMIN' || session.user.role === 'admin',
           emailVerified: true, // NextAuth sessions are considered verified
           image: session.user.image || undefined
         };
@@ -68,7 +68,7 @@ export function UserProvider({ children }: UserProviderProps) {
             username: session.user.username || session.user.name || '',
             email: session.user.email || '',
             role: session.user.role || 'user',
-            isAdmin: session.user.role === 'admin',
+            isAdmin: session.user.role === 'ADMIN' || session.user.role === 'admin',
             emailVerified: true, // NextAuth sessions are considered verified
             image: session.user.image || undefined
           };

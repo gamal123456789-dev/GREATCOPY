@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إشعارات الإدارة - Gear Score</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .status {
+            padding: 20px;
+            text-align: center;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .notifications {
+            padding: 30px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .notification {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .notification:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .notification.new-order {
+            border-left: 5px solid #28a745;
+            background: #d4edda;
+        }
+        
+        .notification.payment {
+            border-left: 5px solid #007bff;
+            background: #d1ecf1;
+        }
+        
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .notification-title {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        
+        .notification-time {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .notification-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .detail-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .detail-value {
+            color: #212529;
+        }
+        
+        .no-notifications {
+            text-align: center;
+            color: #6c757d;
+            font-size: 1.2rem;
+            padding: 50px;
+        }
+        
+        .clear-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 20px;
+            transition: background 0.3s ease;
+        }
+        
+        .clear-btn:hover {
+            background: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔔 إشعارات الإدارة</h1>
+            <p>مراقبة الطلبات والمدفوعات في الوقت الفعلي</p>
+        </div>
+        
+        <div id="connectionStatus" class="status disconnected">
+            ❌ غير متصل بالخادم
+        </div>
+        
+        <button class="clear-btn" onclick="clearNotifications()">🗑️ مسح جميع الإشعارات</button>
+        
+        <div class="notifications" id="notifications">
+            <div class="no-notifications">
+                📭 لا توجد إشعارات حالياً
+            </div>
+        </div>
+    </div>
+    
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const notificationsContainer = document.getElementById('notifications');
+        const statusElement = document.getElementById('connectionStatus');
+        let notifications = [];
+        
+        // Connection status
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            statusElement.className = 'status connected';
+            statusElement.innerHTML = '✅ متصل بالخادم';
+            
+            // Join admin room
+            socket.emit('joinAdminRoom');
+        });
+        
+        socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+            statusElement.className = 'status disconnected';
+            statusElement.innerHTML = '❌ غير متصل بالخادم';
+        });
+        
+        // Listen for new order notifications
+        socket.on('newOrder', (data) => {
+            console.log('New order notification:', data);
+            addNotification('new-order', 'طلب جديد', data);
+        });
+        
+        // Listen for payment notifications
+        socket.on('paymentConfirmed', (data) => {
+            console.log('Payment confirmation:', data);
+            addNotification('payment', 'تأكيد دفع', data);
+        });
+        
+        function addNotification(type, title, data) {
+            const notification = {
+                id: Date.now(),
+                type: type,
+                title: title,
+                data: data,
+                time: new Date().toLocaleString('ar-SA')
+            };
+            
+            notifications.unshift(notification);
+            renderNotifications();
+            
+            // Play notification sound
+            playNotificationSound();
+        }
+        
+        function renderNotifications() {
+            if (notifications.length === 0) {
+                notificationsContainer.innerHTML = '<div class="no-notifications">📭 لا توجد إشعارات حالياً</div>';
+                return;
+            }
+            
+            notificationsContainer.innerHTML = notifications.map(notification => `
+                <div class="notification ${notification.type}">
+                    <div class="notification-header">
+                        <div class="notification-title">
+                            ${notification.type === 'new-order' ? '🆕' : '💰'} ${notification.title}
+                        </div>
+                        <div class="notification-time">${notification.time}</div>
+                    </div>
+                    <div class="notification-details">
+                        <div class="detail-item">
+                            <span class="detail-label">رقم الطلب:</span>
+                            <span class="detail-value">${notification.data.orderId || 'غير محدد'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">العميل:</span>
+                            <span class="detail-value">${notification.data.customerName || 'غير محدد'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">اللعبة:</span>
+                            <span class="detail-value">${notification.data.game || 'غير محدد'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">الخدمة:</span>
+                            <span class="detail-value">${notification.data.service || 'غير محدد'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">السعر:</span>
+                            <span class="detail-value">${notification.data.price || 'غير محدد'} USD</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">طريقة الدفع:</span>
+                            <span class="detail-value">${notification.data.paymentMethod || 'غير محدد'}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function clearNotifications() {
+            notifications = [];
+            renderNotifications();
+        }
+        
+        function playNotificationSound() {
+            try {
+                const audio = new Audio('/notification-Sound.mp3');
+                audio.volume = 0.5;
+                audio.play().catch(e => console.log('Could not play notification sound:', e));
+            } catch (e) {
+                console.log('Notification sound not available:', e);
+            }
+        }
+        
+        // Initial render
+        renderNotifications();
+    </script>
+</body>
+</html>

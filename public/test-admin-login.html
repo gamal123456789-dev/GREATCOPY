@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login Test - Gear Score</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .container {
+            background: #2a2a2a;
+            padding: 30px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #555;
+            border-radius: 5px;
+            background: #333;
+            color: white;
+            font-size: 16px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .success {
+            background: #28a745;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .error {
+            background: #dc3545;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .info {
+            background: #17a2b8;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .admin-list {
+            background: #333;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .admin-user {
+            padding: 8px;
+            margin: 5px 0;
+            background: #444;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .admin-user:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔐 Admin Login Test - Gear Score</h1>
+    
+    <div class="container">
+        <h2>Available Admin Accounts</h2>
+        <div id="adminList" class="admin-list">
+            <div class="info">Loading admin accounts...</div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h2>Test Admin Login</h2>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">Admin Email:</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit">Login as Admin</button>
+            <button type="button" onclick="testAdminAccess()">Test Admin Access</button>
+        </form>
+        <div id="loginResult"></div>
+    </div>
+    
+    <div class="container">
+        <h2>Quick Actions</h2>
+        <button onclick="checkCurrentSession()">Check Current Session</button>
+        <button onclick="testAdminPage()">Test Admin Page Access</button>
+        <button onclick="clearSession()">Clear Session</button>
+        <div id="actionResult"></div>
+    </div>
+
+    <script>
+        // Load admin accounts on page load
+        window.onload = function() {
+            loadAdminAccounts();
+        };
+        
+        async function loadAdminAccounts() {
+            try {
+                const response = await fetch('/api/test-admin-accounts');
+                if (response.ok) {
+                    const data = await response.json();
+                    displayAdminAccounts(data.admins);
+                } else {
+                    document.getElementById('adminList').innerHTML = 
+                        '<div class="error">Failed to load admin accounts</div>';
+                }
+            } catch (error) {
+                document.getElementById('adminList').innerHTML = 
+                    '<div class="error">Error loading admin accounts: ' + error.message + '</div>';
+            }
+        }
+        
+        function displayAdminAccounts(admins) {
+            const adminList = document.getElementById('adminList');
+            if (admins.length === 0) {
+                adminList.innerHTML = '<div class="error">No admin accounts found</div>';
+                return;
+            }
+            
+            let html = '<h3>Click to select an admin account:</h3>';
+            admins.forEach((admin, index) => {
+                html += `<div class="admin-user" onclick="selectAdmin('${admin.email}')">`;
+                html += `${index + 1}. ${admin.email} (${admin.role})`;
+                html += `</div>`;
+            });
+            adminList.innerHTML = html;
+        }
+        
+        function selectAdmin(email) {
+            document.getElementById('email').value = email;
+            document.getElementById('password').focus();
+        }
+        
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch('/api/auth/signin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password,
+                        callbackUrl: '/admin'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.ok) {
+                    document.getElementById('loginResult').innerHTML = 
+                        '<div class="success">✅ Login successful! Redirecting to admin page...</div>';
+                    setTimeout(() => {
+                        window.location.href = '/admin';
+                    }, 2000);
+                } else {
+                    document.getElementById('loginResult').innerHTML = 
+                        '<div class="error">❌ Login failed: ' + (result.error || 'Unknown error') + '</div>';
+                }
+            } catch (error) {
+                document.getElementById('loginResult').innerHTML = 
+                    '<div class="error">❌ Login error: ' + error.message + '</div>';
+            }
+        });
+        
+        async function checkCurrentSession() {
+            try {
+                const response = await fetch('/api/auth/session');
+                const session = await response.json();
+                
+                let html = '<h3>Current Session:</h3>';
+                if (session && session.user) {
+                    html += '<div class="success">';
+                    html += `<strong>User:</strong> ${session.user.email}<br>`;
+                    html += `<strong>Role:</strong> ${session.user.role}<br>`;
+                    html += `<strong>Is Admin:</strong> ${session.user.role === 'ADMIN'}<br>`;
+                    html += '</div>';
+                } else {
+                    html += '<div class="error">No active session found</div>';
+                }
+                
+                document.getElementById('actionResult').innerHTML = html;
+            } catch (error) {
+                document.getElementById('actionResult').innerHTML = 
+                    '<div class="error">Error checking session: ' + error.message + '</div>';
+            }
+        }
+        
+        async function testAdminPage() {
+            try {
+                const response = await fetch('/admin');
+                const html = await response.text();
+                
+                let result = '<h3>Admin Page Test:</h3>';
+                if (html.includes('<main class="jsx-') && html.includes('></main>')) {
+                    result += '<div class="error">❌ Admin page shows empty content (not logged in as admin)</div>';
+                } else if (html.includes('Dashboard') || html.includes('admin')) {
+                    result += '<div class="success">✅ Admin page content is visible</div>';
+                } else {
+                    result += '<div class="info">⚠️ Admin page response unclear</div>';
+                }
+                
+                document.getElementById('actionResult').innerHTML = result;
+            } catch (error) {
+                document.getElementById('actionResult').innerHTML = 
+                    '<div class="error">Error testing admin page: ' + error.message + '</div>';
+            }
+        }
+        
+        async function testAdminAccess() {
+            await checkCurrentSession();
+            setTimeout(testAdminPage, 1000);
+        }
+        
+        async function clearSession() {
+            try {
+                await fetch('/api/auth/signout', { method: 'POST' });
+                document.getElementById('actionResult').innerHTML = 
+                    '<div class="success">✅ Session cleared</div>';
+            } catch (error) {
+                document.getElementById('actionResult').innerHTML = 
+                    '<div class="error">Error clearing session: ' + error.message + '</div>';
+            }
+        }
+    </script>
+</body>
+</html>

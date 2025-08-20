@@ -5,24 +5,27 @@ const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
 const { Server } = require('socket.io');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('./lib/prisma.js');
 const { setSocketIO } = require('./lib/socket-cjs');
 const jwt = require('jsonwebtoken');
 const { messageLimiter } = require('./lib/rateLimiter.js');
 const { globalErrorHandler, socketErrorHandler, databaseErrorHandler } = require('./middleware/errorMiddleware');
 const { logError } = require('./lib/errorHandler');
 
+// Initialize database notification monitoring
+const { setupDatabaseMonitoring } = require('./services/databaseNotificationService');
+// Setup monitoring on the shared Prisma client
+setupDatabaseMonitoring(prisma);
+
 // Performance and security middleware
 const compression = require('compression');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
-const prisma = new PrismaClient();
-
 const dev = process.env.NODE_ENV !== 'production';
 const LOG_VERBOSE = process.env.LOG_VERBOSE === 'true';
 const hostname = '0.0.0.0'; // Changed from 'localhost' to '0.0.0.0' to allow network access
-const port = process.env.PORT || 5200; // Updated to use port 5200
+const port = process.env.PORT || 5201; // Updated to use port 5201
 
 // when using middleware `hostname` and `port` must be provided below
 const app = next({ dev, hostname, port });

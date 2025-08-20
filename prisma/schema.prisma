@@ -93,6 +93,7 @@ model Order {
   OrderDiscordHandle OrderDiscordHandle?
   OrderNote          OrderNote?
   PriceChange        PriceChange[]
+  Invoice            Invoice?
 }
 
 model OrderDiscordHandle {
@@ -146,6 +147,18 @@ model OrderNote {
   Order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
+model Notification {
+  id        String   @id @default(cuid())
+  type      String
+  title     String
+  message   String
+  data      Json?
+  userId    String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
 model User {
   id                   String                 @id
   email                String                 @unique
@@ -168,4 +181,69 @@ model User {
   OrderDiscordHandle   OrderDiscordHandle[]
   PriceChange          PriceChange[]
   Session              Session[]
+  Invoice              Invoice[]
+  PaymentSession       PaymentSession[]
+  notifications        Notification[]
+}
+
+model Invoice {
+  id                String              @id @default(cuid())
+  invoiceNumber     String              @unique
+  orderId           String              @unique
+  userId            String
+  customerName      String
+  customerEmail     String?
+  issueDate         DateTime            @default(now())
+  dueDate           DateTime?
+  status            String              @default("issued") // issued, paid, cancelled
+  subtotal          Float
+  tax               Float               @default(0)
+  total             Float
+  currency          String              @default("USD")
+  paymentMethod     String
+  paymentGateway    String              // Cryptomus, Coinbase, etc.
+  paymentId         String?             // Payment gateway transaction ID
+  notes             String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  // Relations
+  Order             Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  User              User                @relation(fields: [userId], references: [id])
+  InvoiceItems      InvoiceItem[]
+}
+
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  description String   // Detailed service description
+  game        String   // Game name
+  service     String   // Service type
+  quantity    Int      @default(1)
+  unitPrice   Float
+  totalPrice  Float
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  Invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model PaymentSession {
+  id              String   @id @default(cuid())
+  orderId         String   @unique
+  userId          String
+  customerEmail   String
+  game            String
+  service         String
+  serviceDetails  String?
+  amount          Float
+  currency        String   @default("USD")
+  paymentProvider String   // Cryptomus, Coinbase, etc.
+  paymentId       String?  // Payment gateway transaction ID
+  status          String   @default("pending") // pending, completed, failed, expired
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  User            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

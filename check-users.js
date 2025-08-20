@@ -1,40 +1,38 @@
 const { PrismaClient } = require('@prisma/client');
-
 const prisma = new PrismaClient();
 
 async function checkUsers() {
   try {
-    console.log('👥 Checking existing users in database...');
-    console.log('==================================================');
-    
     const users = await prisma.user.findMany({
       select: {
         id: true,
-        name: true,
         email: true,
-        createdAt: true
-      },
-      take: 5
+        role: true,
+        username: true,
+        name: true
+      }
     });
     
-    if (users.length === 0) {
-      console.log('❌ No users found in database.');
-      console.log('   Need to create a test user first.');
-    } else {
-      console.log(`✅ Found ${users.length} users:`);
-      users.forEach((user, index) => {
-        console.log(`   ${index + 1}. ID: ${user.id}`);
-        console.log(`      Name: ${user.name || 'N/A'}`);
-        console.log(`      Email: ${user.email || 'N/A'}`);
-        console.log(`      Created: ${user.createdAt}`);
-        console.log('');
-      });
-    }
+    console.log('All users in database:');
+    users.forEach((user, index) => {
+      console.log(`${index + 1}. Email: ${user.email}`);
+      console.log(`   Role: ${user.role || 'No role set'}`);
+      console.log(`   Username: ${user.username || 'N/A'}`);
+      console.log(`   Name: ${user.name || 'N/A'}`);
+      console.log('   ---');
+    });
     
-    console.log('==================================================');
+    console.log(`\nTotal users: ${users.length}`);
+    
+    // Check for admin users
+    const adminUsers = users.filter(user => user.role === 'ADMIN' || user.role === 'admin');
+    console.log(`Admin users: ${adminUsers.length}`);
+    adminUsers.forEach(admin => {
+      console.log(`- Admin: ${admin.email} (role: ${admin.role})`);
+    });
     
   } catch (error) {
-    console.error('❌ Error checking users:', error);
+    console.error('Error:', error.message);
   } finally {
     await prisma.$disconnect();
   }

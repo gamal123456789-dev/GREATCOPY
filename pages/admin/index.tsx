@@ -6,6 +6,8 @@ import ChatInterface from '../../components/ChatInterface';
 import NotificationCenter from '../../components/NotificationCenter';
 import UnreadBadge from '../../components/UnreadBadge';
 import { useUnreadCounts } from '../../hooks/useUnreadCounts';
+import useSocket from '../../hooks/useSocket';
+import AdminSidebar from '../../components/Sidebar';
 
 
 // --- Interfaces ---
@@ -312,6 +314,27 @@ const Sidebar: React.FC<{ activePage: string; setActivePage: (page: string) => v
           </div>
           <span>Analytics</span>
           {activePage === 'Analytics' && (
+            <div className="ml-auto w-2 h-2 bg-white rounded-full animate-pulse"></div>
+          )}
+        </a>
+        
+        <a
+          href="#"
+          onClick={(e) => { e.preventDefault(); setActivePage('Notifications'); }}
+          className={`group flex items-center px-4 py-3 rounded-xl transition-all duration-300 text-sm font-medium ${
+              activePage === 'Notifications' ? 'bg-gradient-to-r from-green-600 to-teal-600 text-white shadow-lg transform scale-105'
+              : 'text-gray-300 hover:bg-slate-800/50 hover:text-white hover:transform hover:scale-105'
+          }`}
+        >
+          <div className={`w-5 h-5 mr-3 transition-transform duration-300 ${
+              activePage === 'Notifications' ? 'scale-110' : 'group-hover:scale-110'
+          }`}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5-5-5h5v-5a7.5 7.5 0 00-15 0v5h5l-5 5-5-5h5V7a12 12 0 0124 0v10z" />
+            </svg>
+          </div>
+          <span>Notifications</span>
+          {activePage === 'Notifications' && (
             <div className="ml-auto w-2 h-2 bg-white rounded-full animate-pulse"></div>
           )}
         </a>
@@ -673,6 +696,10 @@ const OrdersTable: React.FC<{ orders: Order[]; selectedOrderId: string | null; o
   const [editingOrder, setEditingOrder] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<{ price: string; service: string; priceChangeReason: string; notes: string }>({ price: '', service: '', priceChangeReason: '', notes: '' });
   const [originalValues, setOriginalValues] = useState<{ [key: string]: { price: number, service: string, notes: string } }>({});
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [ordersPerPage, setOrdersPerPage] = useState(20);
 
   
   const getStatusClass = (status: Order['status']) => {
@@ -754,6 +781,30 @@ const OrdersTable: React.FC<{ orders: Order[]; selectedOrderId: string | null; o
 
   // Use filtered orders if provided, otherwise use all orders
   const ordersToDisplay = filteredOrders || orders;
+  
+  // Sort orders by date (newest first)
+  const sortedOrders = [...ordersToDisplay].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  
+  // Calculate pagination
+  const totalOrders = sortedOrders.length;
+  const totalPages = Math.ceil(totalOrders / ordersPerPage);
+  const startIndex = (currentPage - 1) * ordersPerPage;
+  const endIndex = startIndex + ordersPerPage;
+  const currentOrders = sortedOrders.slice(startIndex, endIndex);
+  
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredOrders]);
+  
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+  
+  const handleOrdersPerPageChange = (newOrdersPerPage: number) => {
+    setOrdersPerPage(newOrdersPerPage);
+    setCurrentPage(1);
+  };
 
   return (
     <div className="bg-gradient-to-br from-slate-800 to-gray-800 p-8 rounded-2xl mt-8 border border-slate-700/50 shadow-2xl">
@@ -763,9 +814,28 @@ const OrdersTable: React.FC<{ orders: Order[]; selectedOrderId: string | null; o
           <span className="text-sm text-gray-400">Live Updates</span>
         </div>
       </div>
-      <div className="overflow-x-auto rounded-xl border border-slate-700/50">
+      {/* Orders count and pagination controls */}
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center space-x-4">
+          <span className="text-gray-300 text-sm">
+            عرض {startIndex + 1}-{Math.min(endIndex, totalOrders)} من {totalOrders} طلب
+          </span>
+          <select
+            value={ordersPerPage}
+            onChange={(e) => handleOrdersPerPageChange(Number(e.target.value))}
+            className="bg-slate-700 text-white px-3 py-1 rounded border border-slate-600 focus:border-blue-500 focus:outline-none text-sm"
+          >
+            <option value={10}>10 طلبات</option>
+            <option value={20}>20 طلب</option>
+            <option value={50}>50 طلب</option>
+            <option value={100}>100 طلب</option>
+          </select>
+        </div>
+      </div>
+      
+      <div className="overflow-x-auto rounded-xl border border-slate-700/50" style={{ maxHeight: '600px', overflowY: 'auto' }}>
         <table className="w-full text-left">
-          <thead>
+          <thead className="sticky top-0 z-10">
             <tr className="bg-gradient-to-r from-slate-700 to-gray-700 text-gray-300">
               <th className="p-4 font-semibold">Order ID</th>
               <th className="p-4 font-semibold">Customer</th>
@@ -781,11 +851,11 @@ const OrdersTable: React.FC<{ orders: Order[]; selectedOrderId: string | null; o
             </tr>
           </thead>
           <tbody>
-            {ordersToDisplay.length === 0 ? (
+            {currentOrders.length === 0 ? (
               <tr>
                 <td colSpan={onUpdateOrderDetails ? 11 : 10} className="p-4 text-center text-gray-400">No orders found.</td>
               </tr>
-            ) : [...ordersToDisplay].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((order, index) => (
+            ) : currentOrders.map((order, index) => (
               <tr key={order.id} onClick={() => onSelectOrder(order.id)} className={`border-b border-slate-700/30 hover:bg-gradient-to-r hover:from-blue-500/10 hover:to-purple-500/10 cursor-pointer transition-all duration-300 ${order.id === selectedOrderId ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 border-blue-500/30' : ''} ${index % 2 === 0 ? 'bg-slate-800/30' : 'bg-slate-900/30'}`}>
                 <td className="p-4" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center gap-2">
@@ -949,6 +1019,56 @@ const OrdersTable: React.FC<{ orders: Order[]; selectedOrderId: string | null; o
           </tbody>
         </table>
       </div>
+      
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center mt-6 space-x-2">
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="px-3 py-2 bg-slate-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-600 transition-colors"
+          >
+            السابق
+          </button>
+          
+          <div className="flex space-x-1">
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNum;
+              if (totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (currentPage <= 3) {
+                pageNum = i + 1;
+              } else if (currentPage >= totalPages - 2) {
+                pageNum = totalPages - 4 + i;
+              } else {
+                pageNum = currentPage - 2 + i;
+              }
+              
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => handlePageChange(pageNum)}
+                  className={`px-3 py-2 rounded-lg transition-colors ${
+                    currentPage === pageNum
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+          </div>
+          
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="px-3 py-2 bg-slate-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-600 transition-colors"
+          >
+            التالي
+          </button>
+        </div>
+      )}
 
     </div>
   );
@@ -2980,6 +3100,9 @@ const AdminPanel: React.FC = () => {
   const { orders, updateOrderStatus, updateOrderDetails } = useOrders();
   const { user } = useUser();
   const { getUnreadCount, markAsRead } = useUnreadCounts();
+  
+  // Initialize Socket.IO connection for admin notifications
+  useSocket();
 
   // Load price changes from database
   const loadPriceChanges = async () => {
@@ -3121,7 +3244,7 @@ const AdminPanel: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950">
-      <Sidebar activePage={activePage} setActivePage={setActivePage} />
+      <AdminSidebar activePage={activePage} setActivePage={setActivePage} />
       <div className="flex-1 flex" style={{ marginLeft: '16rem' }}>
         <main id="main-content" className="flex-1 p-8 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
@@ -3140,12 +3263,12 @@ export default function ProtectedAdminPage() {
 
   useEffect(() => {
     if (user === null) return;
-    if (!user || user.role !== 'ADMIN') {
+    if (!user || (user.role !== 'ADMIN' && user.role !== 'admin')) {
       router.replace('/');
     }
   }, [user, router]);
 
-  if (!user || user.role !== 'ADMIN') {
+  if (!user || (user.role !== 'ADMIN' && user.role !== 'admin')) {
     return null;
   }
 

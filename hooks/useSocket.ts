@@ -78,7 +78,7 @@ export const useSocket = () => {
           
           const socketUrl = process.env.NODE_ENV === 'production' 
             ? process.env.NEXT_PUBLIC_BASE_URL || 'https://gear-score.com'
-            : 'http://localhost:5200';
+            : 'http://localhost:5201';
           
           newSocket = io(socketUrl, {
             auth: { token },
@@ -93,7 +93,7 @@ export const useSocket = () => {
           // Fall back to unauthenticated connection
           const socketUrl = process.env.NODE_ENV === 'production' 
             ? process.env.NEXT_PUBLIC_BASE_URL || 'https://gear-score.com'
-            : 'http://localhost:5200';
+            : 'http://localhost:5201';
           
           newSocket = io(socketUrl, {
             transports: ['websocket', 'polling'],
@@ -108,7 +108,7 @@ export const useSocket = () => {
         
         const socketUrl = process.env.NODE_ENV === 'production' 
           ? process.env.NEXT_PUBLIC_BASE_URL || 'https://gear-score.com'
-          : 'http://localhost:5200';
+          : 'http://localhost:5201';
         
         newSocket = io(socketUrl, {
           transports: ['websocket', 'polling'],

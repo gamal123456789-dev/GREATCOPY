@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useSession } from 'next-auth/react';
+import NotificationCenter from '../../components/NotificationCenter';
 
 interface OrderDetails {
   id: string;
@@ -265,6 +266,10 @@ export default function PaymentSuccess({ orderId: serverOrderId }: PageProps) {
 
   return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        {/* Notification Center for payment confirmations */}
+        <div className="fixed top-4 right-4 z-50">
+          <NotificationCenter />
+        </div>
         <div className="max-w-md w-full bg-gray-800 rounded-lg shadow-lg p-8 border border-gray-700">
           {/* Success Icon */}
           <div className="text-center mb-6">

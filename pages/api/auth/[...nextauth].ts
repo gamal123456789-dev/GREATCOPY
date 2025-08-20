@@ -118,6 +118,24 @@ export const authOptions: AuthOptions = {
         token.username = user.username;
       }
       
+      // For all logins, ensure we get the latest role from database
+      if (user && user.email) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { email: user.email },
+            select: { role: true, username: true, id: true }
+          });
+          
+          if (dbUser) {
+            token.role = dbUser.role;
+            token.username = dbUser.username;
+            token.sub = dbUser.id;
+          }
+        } catch (error) {
+          console.error('[AUTH] Error fetching user role from database:', error);
+        }
+      }
+      
       // Handle Discord login
       if (account?.provider === "discord" && user) {
         try {

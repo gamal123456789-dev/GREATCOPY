@@ -91,6 +91,26 @@ export default async function handler(
       // Don't fail the order creation if chat message fails
     }
 
+    // Create pinned welcome message for the new order
+    try {
+      const welcomeMessage = await prisma.chatMessage.create({
+        data: {
+          id: `welcome_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          message: `🎮 Welcome to Gear Score Support! 🎮\n\nThank you for choosing our services for ${game} - ${serviceDetails || service}.\n\n📋 Order Details:\n• Service: ${serviceDetails || service}\n• Game: ${game}\n• Price: $${numAmount}\n• Order ID: ${order.id}\n\n💬 Our support team will be with you shortly to assist with your order. Feel free to ask any questions!\n\n⭐ We're here to make your gaming experience amazing!`,
+          orderId: order.id,
+          userId: 'system', // System user for welcome messages
+          isSystem: true,
+          isPinned: true,
+          messageType: 'text'
+        },
+      });
+      
+      console.log(`📌 Pinned welcome message created for order: ${order.id}`);
+    } catch (welcomeError) {
+      console.error('Failed to create welcome message:', welcomeError);
+      // Don't fail the order creation if welcome message fails
+    }
+
     // Send notification to user about new order creation
     console.log(`📧 Sending order confirmation notification to user: ${session.user.id}`);
     console.log(`📧 Order details: ${orderId} - ${service}`);
@@ -104,7 +124,7 @@ export default async function handler(
 
     // Send notification to admin about new order
     const displayName = session.user.name || session.user.username || session.user.email?.split('@')[0] || 'Unknown';
-    emitToAdmin('new-order', {
+    emitToAdmin('new-notification', {
       type: 'new-order',
       orderId: order.id,
       customerName: displayName,
@@ -112,8 +132,9 @@ export default async function handler(
       service: order.service,
       serviceName: `${order.game} - ${serviceDetails || order.service}`,
       price: order.price,
-      message: `New order from ${displayName} - ${order.game} (${serviceDetails || order.service})`,
+      message: `🆕 New order from ${displayName} - ${order.game} (${serviceDetails || order.service})\n📌 Welcome message has been automatically pinned in chat`,
       timestamp: new Date(),
+      hasPinnedWelcome: true, // Flag to indicate welcome message was created
       order: {
         id: order.id,
         customerName: displayName,

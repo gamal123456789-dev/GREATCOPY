@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from './auth/[...nextauth]';
 import prisma from '../../lib/prisma';
 const { emitToAdmin, emitToUser } = require('../../lib/socket-cjs');
+const { sendDatabaseNotification } = require('../../services/databaseNotificationService');
 import { generalLimiter, createRateLimitMiddleware, getClientIdentifier } from '../../lib/rateLimiter';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -150,7 +151,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Don't fail the order creation if chat message fails
       }
 
-      // Send notification to admin about new order
+      // Create pinned welcome message for the new order
+      try {
+        const welcomeMessage = await prisma.chatMessage.create({
+          data: {
+            id: `welcome_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            message: `🎮 Welcome to Gear Score Support! 🎮\n\nThank you for choosing our services for ${sanitizedGame} - ${sanitizedService}.\n\n📋 Order Details:\n• Service: ${sanitizedService}\n• Game: ${sanitizedGame}\n• Price: $${validatedPrice}\n• Order ID: ${order.id}\n\n💬 Our support team will be with you shortly to assist with your order. Feel free to ask any questions!\n\n⭐ We're here to make your gaming experience amazing!`,
+            orderId: order.id,
+            userId: 'system', // System user for welcome messages
+            isSystem: true,
+            isPinned: true,
+            messageType: 'text'
+          },
+        });
+        
+        console.log(`📌 Pinned welcome message created for order: ${order.id}`);
+      } catch (welcomeError) {
+        console.error('Failed to create welcome message:', welcomeError);
+        // Don't fail the order creation if welcome message fails
+      }
+
+      // Send notification to admin about new order (Socket.IO)
       emitToAdmin('new-order', {
         type: 'new-order',
         orderId: order.id,
@@ -159,9 +180,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         service: order.service,
         serviceName: order.service || order.game,
         price: order.price,
-        message: `New order from ${displayName} - ${order.game} (${order.service})`,
+        message: `🆕 New order from ${displayName} - ${order.game} (${order.service})\n📌 Welcome message has been automatically pinned in chat`,
         timestamp: new Date(),
-        order: enhancedOrder
+        order: enhancedOrder,
+        hasPinnedWelcome: true // Flag to indicate welcome message was created
+      });
+
+      // Send comprehensive database notification
+      await sendDatabaseNotification('new_order', {
+        orderId: order.id,
+        customerName: displayName,
+        game: order.game,
+        service: order.service,
+        price: order.price,
+        status: order.status,
+        paymentMethod: order.paymentId ? 'Cryptomus' : 'Manual',
+        timestamp: order.date.toISOString()
       });
 
       // Send notification to user about new order creation

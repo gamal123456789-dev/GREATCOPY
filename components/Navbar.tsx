@@ -32,7 +32,11 @@ export default function Navbar() {
   const handleLogout = async () => {
     try {
       console.log('🚪 Navbar logout initiated...');
-      await performLogout(session, setUser);
+      if (session) {
+        await performLogout(session, setUser);
+      } else {
+        await signOut({ callbackUrl: 'https://gear-score.com/auth?mode=login' });
+      }
     } catch (error) {
       console.error('❌ Navbar logout error:', error);
       // Fallback to simple signOut if comprehensive logout fails
@@ -64,8 +68,11 @@ export default function Navbar() {
           <Link href="/contact" className="navbar-link">📞 Contact</Link>
           {(session?.user || user) ? (
             <div className="relative flex items-center space-x-4">
-              {/* Notification Center - Only show on orders page */}
-              {router.pathname === '/orders' && <NotificationCenter className="mr-2" />}
+              {/* Notification Center - Show on orders, payment, and invoice pages */}
+              {(router.pathname === '/orders' || 
+                router.pathname.startsWith('/pay/') || 
+                router.pathname.startsWith('/api/invoice/view/')) && 
+                <NotificationCenter className="mr-2" />}
               
               {/* Notification Bell */}
               <button
